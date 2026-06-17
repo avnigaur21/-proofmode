@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# ProofMode generated output
+proofmode-runs/reports/*
+proofmode-runs/screenshots/*
+proofmode-runs/logs/*
+
+# Environment
+.env
+.env.local
+

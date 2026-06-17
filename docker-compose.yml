@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PROOFMODE_ENV=development
+    volumes:
+      - ./proofmode-runs:/app/proofmode-runs
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: proofmode
+      POSTGRES_PASSWORD: proofmode
+      POSTGRES_DB: proofmode
+    ports:
+      - "5432:5432"
+    volumes:
+      - proofmode-postgres:/var/lib/postgresql/data
+
+volumes:
+  proofmode-postgres:
+

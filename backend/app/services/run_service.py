@@ -1,4 +1,6 @@
 from app.schemas.runs import ProofCheck, ProofRun, ProofRunCreate, RunStatus
+from app.services.planner import VerificationPlanner
+from app.services.report_generator import ReportGenerator
 from app.verifiers.api_verifier import ApiVerifier
 from app.verifiers.db_verifier import DbVerifier
 from app.verifiers.diff_verifier import DiffVerifier
@@ -8,6 +10,8 @@ from app.verifiers.ui_verifier import UiVerifier
 class RunService:
     def __init__(self) -> None:
         self._runs: dict[str, ProofRun] = {}
+        self._planner = VerificationPlanner()
+        self._report_generator = ReportGenerator()
         self._verifiers = [
             UiVerifier(),
             ApiVerifier(),
@@ -24,9 +28,11 @@ class RunService:
             status=RunStatus.RUNNING,
         )
 
+        run.checklist = self._planner.create_checklist(run)
         checks = [verifier.verify(run) for verifier in self._verifiers]
         run.checks = checks
         run.status = self._calculate_status(checks)
+        self._report_generator.to_markdown(run)
         self._runs[run.id] = run
         return run
 

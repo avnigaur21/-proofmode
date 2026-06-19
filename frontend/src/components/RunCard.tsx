@@ -25,6 +25,18 @@ export function RunCard({ run }: { run: ProofRun }) {
         </span>
       </div>
 
+      <section className="planned-checks">
+        <p className="check-row__title">PLANNED CHECKLIST</p>
+        <ul>
+          {run.checklist.checks.slice(0, 4).map((check) => (
+            <li key={`${check.layer}-${check.type}`}>
+              <span>{check.layer.toUpperCase()}</span>
+              {check.description}
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <div className="checks-grid">
         {run.checks.map((check) => {
           const LayerIcon = layerIcons[check.layer];
@@ -44,4 +56,3 @@ export function RunCard({ run }: { run: ProofRun }) {
     </article>
   );
 }
-

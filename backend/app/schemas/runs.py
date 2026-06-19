@@ -23,6 +23,18 @@ class RunStatus(StrEnum):
 VerificationLayer = Literal["ui", "api", "db", "diff"]
 
 
+class PlannedCheck(BaseModel):
+    layer: VerificationLayer
+    type: str
+    description: str
+    target: str | None = None
+
+
+class VerificationChecklist(BaseModel):
+    checks: list[PlannedCheck] = Field(default_factory=list)
+    affected_files_hint: list[str] = Field(default_factory=list)
+
+
 class ProofRunCreate(BaseModel):
     claim: str = Field(..., min_length=1)
     repo_path: str | None = None
@@ -45,5 +57,5 @@ class ProofRun(BaseModel):
     repo_path: str | None = None
     target_url: str | None = None
     api_base_url: str | None = None
+    checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)
     checks: list[ProofCheck] = Field(default_factory=list)
-

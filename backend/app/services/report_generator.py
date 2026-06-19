@@ -8,11 +8,27 @@ class ReportGenerator:
             "",
             f"Status: `{run.status}`",
             "",
-            "## Checks",
+            "## Planned Checklist",
         ]
+
+        for planned_check in run.checklist.checks:
+            lines.append(
+                f"- **{planned_check.layer}** `{planned_check.type}` - {planned_check.description}"
+            )
+
+        lines.extend(
+            [
+                "",
+                "## Results",
+            ]
+        )
 
         for check in run.checks:
             lines.append(f"- **{check.layer}**: `{check.status}` - {check.summary}")
 
-        return "\n".join(lines)
+        if run.checklist.affected_files_hint:
+            lines.extend(["", "## Affected Files Hint"])
+            for hint in run.checklist.affected_files_hint:
+                lines.append(f"- `{hint}`")
 
+        return "\n".join(lines)

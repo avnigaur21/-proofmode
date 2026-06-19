@@ -180,6 +180,36 @@ button:disabled {
   margin-top: 20px;
 }
 
+.planned-checks {
+  margin-top: 18px;
+  padding: 14px;
+  background: #eef6f3;
+  border: 1px solid #cfe3dc;
+  border-radius: 8px;
+}
+
+.planned-checks ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planned-checks li {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 10px;
+  color: #46524b;
+  line-height: 1.4;
+}
+
+.planned-checks span {
+  color: #0d6b57;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 .check-row {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -231,4 +261,3 @@ button:disabled {
     flex-direction: column;
   }
 }
-

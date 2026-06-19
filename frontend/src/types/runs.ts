@@ -9,6 +9,18 @@ export type ProofCheck = {
   evidence: Record<string, string>;
 };
 
+export type PlannedCheck = {
+  layer: VerificationLayer;
+  type: string;
+  description: string;
+  target?: string | null;
+};
+
+export type VerificationChecklist = {
+  checks: PlannedCheck[];
+  affected_files_hint: string[];
+};
+
 export type ProofRun = {
   id: string;
   claim: string;
@@ -17,6 +29,6 @@ export type ProofRun = {
   repo_path?: string | null;
   target_url?: string | null;
   api_base_url?: string | null;
+  checklist: VerificationChecklist;
   checks: ProofCheck[];
 };
-

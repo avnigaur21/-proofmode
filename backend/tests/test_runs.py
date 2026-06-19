@@ -13,5 +13,5 @@ def test_create_run_returns_structured_report() -> None:
     body = response.json()
     assert body["claim"] == "Add login page"
     assert body["status"] == "uncertain"
+    assert len(body["checklist"]["checks"]) >= 2
     assert len(body["checks"]) == 4
-

@@ -1,4 +1,5 @@
 from app.schemas.runs import ProofRun
+from app.services.artifacts import artifact_root
 
 
 class ReportGenerator:
@@ -32,3 +33,10 @@ class ReportGenerator:
                 lines.append(f"- `{hint}`")
 
         return "\n".join(lines)
+
+    def write_markdown(self, run: ProofRun) -> str:
+        report_dir = artifact_root() / "reports"
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / f"{run.id}.md"
+        report_path.write_text(self.to_markdown(run), encoding="utf-8")
+        return str(report_path)

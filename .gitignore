@@ -12,8 +12,9 @@ dist/
 proofmode-runs/reports/*
 proofmode-runs/screenshots/*
 proofmode-runs/logs/*
+proofmode-runs/snapshots/*
+!proofmode-runs/**/.gitkeep
 
 # Environment
 .env
 .env.local
-

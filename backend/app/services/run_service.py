@@ -32,7 +32,7 @@ class RunService:
         checks = [verifier.verify(run) for verifier in self._verifiers]
         run.checks = checks
         run.status = self._calculate_status(checks)
-        self._report_generator.to_markdown(run)
+        run.report_path = self._report_generator.write_markdown(run)
         self._runs[run.id] = run
         return run
 

@@ -6,7 +6,7 @@ export type ProofCheck = {
   layer: VerificationLayer;
   status: CheckStatus;
   summary: string;
-  evidence: Record<string, string>;
+  evidence: Record<string, unknown>;
 };
 
 export type PlannedCheck = {
@@ -31,4 +31,5 @@ export type ProofRun = {
   api_base_url?: string | null;
   checklist: VerificationChecklist;
   checks: ProofCheck[];
+  report_path?: string | null;
 };

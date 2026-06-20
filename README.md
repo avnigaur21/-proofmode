@@ -57,8 +57,11 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+playwright install chromium
 uvicorn app.main:app --reload
 ```
+
+Use Python 3.12 for the backend environment. Some pinned native dependencies do not yet have reliable wheels for Python 3.14.
 
 Frontend:
 
@@ -84,3 +87,5 @@ docker compose up --build
 - Checkpoint 6: Polished report dashboard
 
 See `docs/ROADMAP.md` for the merged roadmap we are using, including the product structure inspired by the additional architecture plan.
+
+See `docs/CHECKPOINTS.md` for the detailed 16-checkpoint implementation guide.

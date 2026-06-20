@@ -40,6 +40,8 @@ ProofMode verifies an AI coding agent's "done" claim before humans trust it. A t
 
 ## Build Phases
 
+For the detailed implementation checklist, see `docs/CHECKPOINTS.md`.
+
 ### Phase 1: Foundation
 
 - FastAPI app structure.
@@ -110,4 +112,3 @@ proofmode-runs/
     db_snapshot_after.json
     report.md
 ```
-

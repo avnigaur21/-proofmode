@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from enum import StrEnum
+from typing import Any
 from typing import Literal
 from uuid import uuid4
 
@@ -46,7 +47,7 @@ class ProofCheck(BaseModel):
     layer: VerificationLayer
     status: CheckStatus
     summary: str
-    evidence: dict[str, str] = Field(default_factory=dict)
+    evidence: dict[str, Any] = Field(default_factory=dict)
 
 
 class ProofRun(BaseModel):
@@ -59,3 +60,4 @@ class ProofRun(BaseModel):
     api_base_url: str | None = None
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)
     checks: list[ProofCheck] = Field(default_factory=list)
+    report_path: str | None = None

@@ -9,6 +9,8 @@ This repository starts with the smallest useful version of that idea:
 - verifier modules for UI, API, DB, and Git diff checks
 - a report shape that can grow into screenshots, logs, response diffs, and database evidence
 
+The DB verifier is database-URL based. SQLite works as the first local implementation target, and PostgreSQL support can use the same `target_db_url` contract.
+
 ## First Checkpoint
 
 The first checkpoint is intentionally simple. We are not trying to solve every verification problem yet. We are creating the stable bones of the product:
@@ -62,6 +64,14 @@ uvicorn app.main:app --reload
 ```
 
 Use Python 3.12 for the backend environment. Some pinned native dependencies do not yet have reliable wheels for Python 3.14.
+
+Backend tests:
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest tests
+```
 
 Frontend:
 

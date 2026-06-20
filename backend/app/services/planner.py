@@ -40,13 +40,31 @@ class VerificationPlanner:
                 )
             )
 
-        checks.append(
-            PlannedCheck(
-                layer="db",
-                type="state_snapshot_ready",
-                description="Prepare database state snapshot checks when a target database is configured.",
+        if run.target_db_url is not None:
+            checks.extend(
+                [
+                    PlannedCheck(
+                        layer="db",
+                        type="schema_snapshot",
+                        description="Snapshot table names, columns, column types, and schema hashes.",
+                        target=self._mask_db_url(run.target_db_url),
+                    ),
+                    PlannedCheck(
+                        layer="db",
+                        type="row_count_snapshot",
+                        description="Track row counts to detect insertions, deletions, and unexpected state changes.",
+                        target=self._mask_db_url(run.target_db_url),
+                    ),
+                ]
             )
-        )
+        else:
+            checks.append(
+                PlannedCheck(
+                    layer="db",
+                    type="state_snapshot_ready",
+                    description="Prepare database state snapshot checks when a target database is configured.",
+                )
+            )
 
         return VerificationChecklist(
             checks=checks,
@@ -65,3 +83,11 @@ class VerificationPlanner:
             hints.append("backend/app/models/")
 
         return hints
+
+    def _mask_db_url(self, db_url: str) -> str:
+        if "@" not in db_url:
+            return db_url
+
+        scheme, rest = db_url.split("://", 1) if "://" in db_url else ("", db_url)
+        location = rest.split("@", 1)[1]
+        return f"{scheme}://***@{location}" if scheme else f"***@{location}"

@@ -363,7 +363,7 @@ Acceptance criteria:
 
 Current status:
 
-- Not started.
+- Started.
 
 ### Checkpoint 12: Data Snapshot Compare
 
@@ -390,7 +390,7 @@ Acceptance criteria:
 
 Current status:
 
-- Not started.
+- Started.
 
 ## Week 4: Planner, Git Diff, And Product Polish
 
@@ -518,8 +518,8 @@ Current status:
 | 8 | Human-readable UI report | Started |
 | 9 | API contract verification | Started |
 | 10 | API snapshot system | Started |
-| 11 | DB verification | Not started |
-| 12 | Data snapshot compare | Not started |
+| 11 | DB verification | Started |
+| 12 | Data snapshot compare | Started |
 | 13 | Git diff analysis | Not started |
 | 14 | Verification planner | Started |
 | 15 | Report UI | Partially started |

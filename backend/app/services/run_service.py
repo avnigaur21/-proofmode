@@ -25,6 +25,7 @@ class RunService:
             repo_path=payload.repo_path,
             target_url=payload.target_url,
             api_base_url=payload.api_base_url,
+            target_db_url=payload.target_db_url,
             status=RunStatus.RUNNING,
         )
 

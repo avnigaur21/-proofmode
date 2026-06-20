@@ -41,6 +41,7 @@ class ProofRunCreate(BaseModel):
     repo_path: str | None = None
     target_url: str | None = None
     api_base_url: str | None = None
+    target_db_url: str | None = None
 
 
 class ProofCheck(BaseModel):
@@ -58,6 +59,7 @@ class ProofRun(BaseModel):
     repo_path: str | None = None
     target_url: str | None = None
     api_base_url: str | None = None
+    target_db_url: str | None = None
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)
     checks: list[ProofCheck] = Field(default_factory=list)
     report_path: str | None = None

@@ -89,6 +89,8 @@ For the detailed implementation checklist, see `docs/CHECKPOINTS.md`.
 - Capture limited sample rows.
 - Compare before and after state.
 
+First implementation note: the DB verifier starts with SQLAlchemy-backed SQLite support so the snapshot logic can run without Docker. PostgreSQL support can use the same database URL contract later.
+
 ### Phase 7: Approval Gate
 
 - Human accepts proof.

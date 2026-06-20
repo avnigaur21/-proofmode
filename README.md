@@ -11,6 +11,8 @@ This repository starts with the smallest useful version of that idea:
 
 The DB verifier is database-URL based. SQLite works as the first local implementation target, and PostgreSQL support can use the same `target_db_url` contract.
 
+The Git diff verifier is repository-path based. Provide `repo_path` to let ProofMode classify changed files and recommend which proof layers should run.
+
 ## First Checkpoint
 
 The first checkpoint is intentionally simple. We are not trying to solve every verification problem yet. We are creating the stable bones of the product:

@@ -27,6 +27,18 @@ class ReportGenerator:
         for check in run.checks:
             lines.append(f"- **{check.layer}**: `{check.status}` - {check.summary}")
 
+        diff_check = next((check for check in run.checks if check.layer == "diff"), None)
+        if diff_check and diff_check.evidence.get("changed_files"):
+            lines.extend(["", "## Changed Files"])
+            for changed_file in diff_check.evidence["changed_files"]:
+                categories = ", ".join(changed_file.get("categories", []))
+                lines.append(f"- `{changed_file['path']}` -> {categories}")
+
+            recommended = diff_check.evidence.get("recommended_layers", [])
+            if recommended:
+                lines.extend(["", "Recommended proof layers:"])
+                lines.append(", ".join(f"`{layer}`" for layer in recommended))
+
         if run.checklist.affected_files_hint:
             lines.extend(["", "## Affected Files Hint"])
             for hint in run.checklist.affected_files_hint:

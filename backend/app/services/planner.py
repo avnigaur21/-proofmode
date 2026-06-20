@@ -1,4 +1,5 @@
 from app.schemas.runs import PlannedCheck, ProofRun, VerificationChecklist
+from app.services.diff_analysis import recommended_layers, summarize_categories
 
 
 class VerificationPlanner:
@@ -70,6 +71,9 @@ class VerificationPlanner:
             checks=checks,
             affected_files_hint=self._affected_files_hint(run),
         )
+
+    def from_changed_files(self, changed_files: list[str]) -> list[str]:
+        return recommended_layers(summarize_categories(changed_files))
 
     def _affected_files_hint(self, run: ProofRun) -> list[str]:
         claim = run.claim.lower()

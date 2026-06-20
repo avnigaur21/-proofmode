@@ -82,6 +82,8 @@ For the detailed implementation checklist, see `docs/CHECKPOINTS.md`.
 - Categorize frontend, backend, API, DB, and shared logic changes.
 - Recommend verification layers based on changed areas.
 
+First implementation note: the diff analyzer inspects uncommitted staged, unstaged, and untracked files for a provided `repo_path`.
+
 ### Phase 6: L3 Data Verifier
 
 - Snapshot table counts.

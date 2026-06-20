@@ -421,7 +421,7 @@ Acceptance criteria:
 
 Current status:
 
-- Not started.
+- Started.
 
 ### Checkpoint 14: Verification Planner
 
@@ -520,7 +520,7 @@ Current status:
 | 10 | API snapshot system | Started |
 | 11 | DB verification | Started |
 | 12 | Data snapshot compare | Started |
-| 13 | Git diff analysis | Not started |
+| 13 | Git diff analysis | Started |
 | 14 | Verification planner | Started |
 | 15 | Report UI | Partially started |
 | 16 | Docker Compose | Started |

@@ -18,6 +18,16 @@ def test_create_run_returns_structured_report() -> None:
     assert body["status"] == "uncertain"
     assert len(body["checklist"]["checks"]) >= 2
     assert len(body["checks"]) == 4
+    assert body["report_url"].startswith("/artifacts/reports/")
+
+    report_response = client.get(body["report_url"])
+    assert report_response.status_code == 200
+    assert "ProofMode Report" in report_response.text
+
+
+def test_artifact_routes_reject_path_traversal() -> None:
+    response = client.get("/artifacts/reports/..%2FREADME.md")
+    assert response.status_code == 404
 
 
 def test_db_snapshot_tracks_sqlite_row_count_changes(tmp_path) -> None:

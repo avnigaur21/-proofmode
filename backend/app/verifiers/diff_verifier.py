@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 from app.schemas.runs import CheckStatus, ProofCheck, ProofRun
-from app.services.artifacts import artifact_root
+from app.services.artifacts import artifact_root, artifact_url
 from app.services.diff_analysis import (
     classify_changed_file,
     recommended_layers,
@@ -65,6 +65,7 @@ class DiffVerifier:
                 "diff_stats": diff_stats,
             },
         )
+        evidence_url = self._evidence_url(run.id)
 
         if not changed_files:
             return ProofCheck(
@@ -77,6 +78,7 @@ class DiffVerifier:
                     "category_summary": category_summary,
                     "recommended_layers": recommended,
                     "evidence_path": str(evidence_path),
+                    "evidence_url": evidence_url,
                 },
             )
 
@@ -91,6 +93,7 @@ class DiffVerifier:
                 "recommended_layers": recommended,
                 "diff_stats": diff_stats,
                 "evidence_path": str(evidence_path),
+                "evidence_url": evidence_url,
             },
         )
 
@@ -126,9 +129,13 @@ class DiffVerifier:
     def _write_evidence(self, run_id: str, evidence: dict) -> Path:
         diff_dir = artifact_root() / "snapshots" / "diff"
         diff_dir.mkdir(parents=True, exist_ok=True)
-        evidence_path = diff_dir / f"{run_id}.json"
+        evidence_filename = f"{run_id}.json"
+        evidence_path = diff_dir / evidence_filename
         evidence_path.write_text(
             json.dumps(evidence, indent=2, sort_keys=True),
             encoding="utf-8",
         )
         return evidence_path
+
+    def _evidence_url(self, run_id: str) -> str:
+        return artifact_url("snapshots", "diff", f"{run_id}.json")

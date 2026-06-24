@@ -1,5 +1,5 @@
 from app.schemas.runs import CheckStatus, ProofCheck, ProofRun
-from app.services.artifacts import artifact_root
+from app.services.artifacts import artifact_root, artifact_url
 
 
 class UiVerifier:
@@ -15,7 +15,9 @@ class UiVerifier:
 
         screenshot_dir = artifact_root() / "screenshots"
         screenshot_dir.mkdir(parents=True, exist_ok=True)
-        screenshot_path = screenshot_dir / f"{run.id}_after.png"
+        screenshot_filename = f"{run.id}_after.png"
+        screenshot_path = screenshot_dir / screenshot_filename
+        screenshot_url = artifact_url("screenshots", screenshot_filename)
 
         console_errors: list[str] = []
         page_errors: list[str] = []
@@ -63,6 +65,7 @@ class UiVerifier:
                     "target_url": run.target_url,
                     "error": str(error),
                     "screenshot_path": str(screenshot_path),
+                    "screenshot_url": screenshot_url,
                 },
             )
         except Exception as error:
@@ -74,6 +77,7 @@ class UiVerifier:
                     "target_url": run.target_url,
                     "error": str(error),
                     "screenshot_path": str(screenshot_path),
+                    "screenshot_url": screenshot_url,
                 },
             )
 
@@ -86,6 +90,7 @@ class UiVerifier:
                 evidence={
                     "target_url": run.target_url,
                     "screenshot_path": str(screenshot_path),
+                    "screenshot_url": screenshot_url,
                     "console_errors": console_errors,
                     "page_errors": page_errors,
                     "network_failures": network_failures,
@@ -99,6 +104,7 @@ class UiVerifier:
             evidence={
                 "target_url": run.target_url,
                 "screenshot_path": str(screenshot_path),
+                "screenshot_url": screenshot_url,
                 "console_errors": console_errors,
                 "page_errors": page_errors,
                 "network_failures": network_failures,

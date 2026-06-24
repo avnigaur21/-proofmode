@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 import httpx
 
 from app.schemas.runs import CheckStatus, ProofCheck, ProofRun
-from app.services.artifacts import artifact_root
+from app.services.artifacts import artifact_root, artifact_url
 
 
 class ApiVerifier:
@@ -23,7 +23,9 @@ class ApiVerifier:
 
         snapshot_dir = artifact_root() / "snapshots" / "api"
         snapshot_dir.mkdir(parents=True, exist_ok=True)
-        snapshot_path = snapshot_dir / f"{self._snapshot_name(run.api_base_url)}.json"
+        snapshot_filename = f"{self._snapshot_name(run.api_base_url)}.json"
+        snapshot_path = snapshot_dir / snapshot_filename
+        snapshot_url = artifact_url("snapshots", "api", snapshot_filename)
 
         try:
             current_snapshot = self._capture_snapshot(run.api_base_url)
@@ -44,6 +46,7 @@ class ApiVerifier:
                 evidence={
                     "api_base_url": run.api_base_url,
                     "snapshot_path": str(snapshot_path),
+                    "snapshot_url": snapshot_url,
                     "status_code": current_snapshot["status_code"],
                 },
             )
@@ -60,6 +63,7 @@ class ApiVerifier:
                 evidence={
                     "api_base_url": run.api_base_url,
                     "snapshot_path": str(snapshot_path),
+                    "snapshot_url": snapshot_url,
                     "issues": issues,
                     "status_code": current_snapshot["status_code"],
                 },
@@ -72,6 +76,7 @@ class ApiVerifier:
             evidence={
                 "api_base_url": run.api_base_url,
                 "snapshot_path": str(snapshot_path),
+                "snapshot_url": snapshot_url,
                 "status_code": current_snapshot["status_code"],
             },
         )

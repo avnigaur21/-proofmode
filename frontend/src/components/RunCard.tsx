@@ -8,12 +8,20 @@ const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
   diff: GitBranch,
 };
 
-export function RunCard({ run }: { run: ProofRun }) {
+export function RunCard({
+  run,
+  isSelected,
+  onSelect,
+}: {
+  run: ProofRun;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
   const StatusIcon =
     run.status === "passed" ? CheckCircle2 : run.status === "failed" ? AlertTriangle : CircleHelp;
 
   return (
-    <article className="run-card">
+    <article className={`run-card ${isSelected ? "run-card--selected" : ""}`}>
       <div className="run-card__header">
         <div>
           <p className="eyebrow">Proof Run</p>
@@ -53,6 +61,9 @@ export function RunCard({ run }: { run: ProofRun }) {
           );
         })}
       </div>
+      <button className="secondary-button" type="button" onClick={onSelect}>
+        Review Evidence
+      </button>
     </article>
   );
 }

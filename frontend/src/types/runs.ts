@@ -33,4 +33,13 @@ export type ProofRun = {
   checklist: VerificationChecklist;
   checks: ProofCheck[];
   report_path?: string | null;
+  report_url?: string | null;
+};
+
+export type ProofRunCreate = {
+  claim: string;
+  repo_path?: string | null;
+  target_url?: string | null;
+  api_base_url?: string | null;
+  target_db_url?: string | null;
 };

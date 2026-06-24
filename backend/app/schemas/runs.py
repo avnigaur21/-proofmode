@@ -63,3 +63,4 @@ class ProofRun(BaseModel):
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)
     checks: list[ProofCheck] = Field(default_factory=list)
     report_path: str | None = None
+    report_url: str | None = None

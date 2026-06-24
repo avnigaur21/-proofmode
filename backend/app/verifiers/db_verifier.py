@@ -6,7 +6,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, inspect, text
 
 from app.schemas.runs import CheckStatus, ProofCheck, ProofRun
-from app.services.artifacts import artifact_root
+from app.services.artifacts import artifact_root, artifact_url
 
 
 class DbVerifier:
@@ -22,7 +22,9 @@ class DbVerifier:
 
         snapshot_dir = artifact_root() / "snapshots" / "db"
         snapshot_dir.mkdir(parents=True, exist_ok=True)
-        snapshot_path = snapshot_dir / f"{self._snapshot_name(run.target_db_url)}.json"
+        snapshot_filename = f"{self._snapshot_name(run.target_db_url)}.json"
+        snapshot_path = snapshot_dir / snapshot_filename
+        snapshot_url = artifact_url("snapshots", "db", snapshot_filename)
 
         try:
             current_snapshot = self._capture_snapshot(run.target_db_url)
@@ -46,6 +48,7 @@ class DbVerifier:
                 evidence={
                     "target_db_url": self._mask_db_url(run.target_db_url),
                     "snapshot_path": str(snapshot_path),
+                    "snapshot_url": snapshot_url,
                     "tables_checked": len(current_snapshot["tables"]),
                 },
             )
@@ -63,6 +66,7 @@ class DbVerifier:
                 evidence={
                     "target_db_url": self._mask_db_url(run.target_db_url),
                     "snapshot_path": str(snapshot_path),
+                    "snapshot_url": snapshot_url,
                     "tables_checked": len(current_snapshot["tables"]),
                     "issues": issues,
                 },
@@ -76,6 +80,7 @@ class DbVerifier:
                 evidence={
                     "target_db_url": self._mask_db_url(run.target_db_url),
                     "snapshot_path": str(snapshot_path),
+                    "snapshot_url": snapshot_url,
                     "tables_checked": len(current_snapshot["tables"]),
                     "issues": issues,
                 },
@@ -88,6 +93,7 @@ class DbVerifier:
             evidence={
                 "target_db_url": self._mask_db_url(run.target_db_url),
                 "snapshot_path": str(snapshot_path),
+                "snapshot_url": snapshot_url,
                 "tables_checked": len(current_snapshot["tables"]),
                 "issues": [],
             },

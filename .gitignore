@@ -13,6 +13,7 @@ dist/
 
 # ProofMode generated output
 proofmode-runs/reports/*
+proofmode-runs/runs/*
 proofmode-runs/screenshots/*
 proofmode-runs/logs/*
 proofmode-runs/snapshots/*

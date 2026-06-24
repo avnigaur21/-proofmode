@@ -4,6 +4,7 @@ import subprocess
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.run_service import RunService
 
 
 client = TestClient(app)
@@ -23,6 +24,12 @@ def test_create_run_returns_structured_report() -> None:
     report_response = client.get(body["report_url"])
     assert report_response.status_code == 200
     assert "ProofMode Report" in report_response.text
+
+    reloaded_service = RunService()
+    reloaded_run = reloaded_service.get_run(body["id"])
+    assert reloaded_run is not None
+    assert reloaded_run.claim == "Add login page"
+    assert reloaded_run.report_url == body["report_url"]
 
 
 def test_artifact_routes_reject_path_traversal() -> None:

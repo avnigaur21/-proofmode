@@ -13,6 +13,8 @@ The DB verifier is database-URL based. SQLite works as the first local implement
 
 The Git diff verifier is repository-path based. Provide `repo_path` to let ProofMode classify changed files and recommend which proof layers should run.
 
+Run records are persisted as JSON under `proofmode-runs/runs/`, while screenshots, reports, and snapshots are stored in sibling artifact folders. This keeps local verification history available after backend restarts.
+
 ## First Checkpoint
 
 The first checkpoint is intentionally simple. We are not trying to solve every verification problem yet. We are creating the stable bones of the product:

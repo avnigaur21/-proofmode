@@ -144,6 +144,7 @@ Acceptance criteria:
 - Every run has a final status.
 - Every check has a layer, status, summary, and evidence object.
 - Reports can later be converted to Markdown.
+- Run records are persisted so verification history survives backend restarts.
 
 Current status:
 

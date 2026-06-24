@@ -1,6 +1,7 @@
 from app.schemas.runs import ProofCheck, ProofRun, ProofRunCreate, RunStatus
 from app.services.planner import VerificationPlanner
 from app.services.report_generator import ReportGenerator
+from app.services.run_store import RunStore
 from app.verifiers.api_verifier import ApiVerifier
 from app.verifiers.db_verifier import DbVerifier
 from app.verifiers.diff_verifier import DiffVerifier
@@ -9,7 +10,8 @@ from app.verifiers.ui_verifier import UiVerifier
 
 class RunService:
     def __init__(self) -> None:
-        self._runs: dict[str, ProofRun] = {}
+        self._store = RunStore()
+        self._runs: dict[str, ProofRun] = self._store.load_all()
         self._planner = VerificationPlanner()
         self._report_generator = ReportGenerator()
         self._verifiers = [
@@ -37,6 +39,7 @@ class RunService:
         run.report_path = report_artifact["path"]
         run.report_url = report_artifact["url"]
         self._runs[run.id] = run
+        self._store.save(run)
         return run
 
     def list_runs(self) -> list[ProofRun]:

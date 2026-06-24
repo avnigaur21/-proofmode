@@ -184,6 +184,8 @@ function IssueEvidence({ check, title }: { check: ProofCheck; title: string }) {
 function DiffEvidence({ check }: { check: ProofCheck }) {
   const files = asObjectArray(check.evidence.changed_files);
   const recommended = asStringArray(check.evidence.recommended_layers);
+  const visibleFiles = files.slice(0, 10);
+  const hiddenFileCount = files.length - visibleFiles.length;
 
   return (
     <>
@@ -198,12 +200,23 @@ function DiffEvidence({ check }: { check: ProofCheck }) {
         <p className="muted-text">No changed files reported.</p>
       ) : (
         <div className="changed-files">
-          {files.map((file, index) => (
+          {visibleFiles.map((file, index) => (
             <div className="changed-file" key={index}>
               <code>{asString(file.path) ?? "unknown"}</code>
-              <span>{asStringArray(file.categories).join(", ")}</span>
+              <div className="file-category-list">
+                {asStringArray(file.categories).map((category) => (
+                  <span className="file-category" key={category}>
+                    {category}
+                  </span>
+                ))}
+              </div>
             </div>
           ))}
+          {hiddenFileCount > 0 ? (
+            <div className="changed-file changed-file--more">
+              {hiddenFileCount} more changed file{hiddenFileCount === 1 ? "" : "s"} in the artifact.
+            </div>
+          ) : null}
         </div>
       )}
     </>

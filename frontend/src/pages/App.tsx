@@ -26,6 +26,11 @@ export function App() {
   }, []);
 
   const selectedRun = runs.find((run) => run.id === selectedRunId) ?? runs[0] ?? null;
+  const runCounts = {
+    passed: runs.filter((run) => run.status === "passed").length,
+    failed: runs.filter((run) => run.status === "failed").length,
+    uncertain: runs.filter((run) => run.status === "uncertain").length,
+  };
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,13 +61,22 @@ export function App() {
         <div className="brand-mark">
           <ShieldCheck size={24} />
         </div>
-        <div>
+        <div className="brand-copy">
           <p className="eyebrow">Agent verification layer</p>
           <h1>ProofMode</h1>
+        </div>
+        <div className="run-metrics" aria-label="Run metrics">
+          <Metric label="Passed" value={runCounts.passed} tone="passed" />
+          <Metric label="Failed" value={runCounts.failed} tone="failed" />
+          <Metric label="Uncertain" value={runCounts.uncertain} tone="uncertain" />
         </div>
       </section>
 
       <section className="claim-panel">
+        <div className="panel-heading">
+          <p className="eyebrow">Verification Console</p>
+          <h2>New Proof Run</h2>
+        </div>
         <form onSubmit={handleSubmit}>
           <label htmlFor="claim">Task completion claim</label>
           <div className="claim-form-row claim-form-row--primary">
@@ -139,6 +153,23 @@ export function App() {
         <RunDetail run={selectedRun} />
       </section>
     </main>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "passed" | "failed" | "uncertain";
+}) {
+  return (
+    <div className={`metric metric--${tone}`}>
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
   );
 }
 

@@ -19,6 +19,9 @@ def test_create_run_returns_structured_report() -> None:
     assert body["status"] == "uncertain"
     assert len(body["checklist"]["checks"]) >= 2
     assert len(body["checks"]) == 4
+    assert len(body["timeline"]) >= 8
+    assert body["timeline"][0]["type"] == "run.created"
+    assert body["timeline"][-1]["type"] == "run.completed"
     assert body["report_url"].startswith("/artifacts/reports/")
 
     report_response = client.get(body["report_url"])
@@ -30,6 +33,7 @@ def test_create_run_returns_structured_report() -> None:
     assert reloaded_run is not None
     assert reloaded_run.claim == "Add login page"
     assert reloaded_run.report_url == body["report_url"]
+    assert reloaded_run.timeline[-1].type == "run.completed"
 
 
 def test_artifact_routes_reject_path_traversal() -> None:

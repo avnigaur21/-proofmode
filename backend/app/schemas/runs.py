@@ -22,6 +22,7 @@ class RunStatus(StrEnum):
 
 
 VerificationLayer = Literal["ui", "api", "db", "diff"]
+TimelineLayer = Literal["run", "planner", "ui", "api", "db", "diff", "report"]
 
 
 class PlannedCheck(BaseModel):
@@ -51,6 +52,16 @@ class ProofCheck(BaseModel):
     evidence: dict[str, Any] = Field(default_factory=dict)
 
 
+class TimelineEvent(BaseModel):
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    type: str
+    layer: TimelineLayer
+    status: str | None = None
+    message: str
+    evidence: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ProofRun(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     claim: str
@@ -62,5 +73,6 @@ class ProofRun(BaseModel):
     target_db_url: str | None = None
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)
     checks: list[ProofCheck] = Field(default_factory=list)
+    timeline: list[TimelineEvent] = Field(default_factory=list)
     report_path: str | None = None
     report_url: str | None = None

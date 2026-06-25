@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   CircleHelp,
   ClipboardCheck,
+  Clock3,
   Database,
   FileText,
   GitBranch,
@@ -12,7 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { artifactUrl, loadTextArtifact } from "../services/proofmodeApi";
-import type { ProofCheck, ProofRun, VerificationLayer } from "../types/runs";
+import type { ProofCheck, ProofRun, TimelineEvent, VerificationLayer } from "../types/runs";
 import { MarkdownReport } from "./MarkdownReport";
 
 const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
@@ -94,6 +95,8 @@ export function RunDetail({ run }: { run: ProofRun | null }) {
       <EvidenceSection check={checksByLayer.get("db")} layer="db" />
       <EvidenceSection check={checksByLayer.get("diff")} layer="diff" />
 
+      <TimelineSection events={run.timeline ?? []} />
+
       <section className="detail-section">
         <div className="section-title-row">
           <FileText size={18} />
@@ -106,6 +109,37 @@ export function RunDetail({ run }: { run: ProofRun | null }) {
           <p className="muted-text">No report artifact loaded yet.</p>
         )}
       </section>
+    </section>
+  );
+}
+
+function TimelineSection({ events }: { events: TimelineEvent[] }) {
+  return (
+    <section className="detail-section">
+      <div className="section-title-row">
+        <Clock3 size={18} />
+        <h3>Agent Behavior Timeline</h3>
+      </div>
+      {events.length === 0 ? (
+        <p className="muted-text">No timeline events captured for this run.</p>
+      ) : (
+        <div className="timeline-list">
+          {events.map((event, index) => (
+            <div className="timeline-item" key={`${event.timestamp}-${event.type}-${index}`}>
+              <div className={`timeline-dot timeline-dot--${statusTone(event.status)}`} />
+              <div className="timeline-card">
+                <div className="timeline-meta">
+                  <time>{formatTime(event.timestamp)}</time>
+                  <span>{event.layer}</span>
+                  {event.status ? <code>{event.status}</code> : null}
+                </div>
+                <strong>{event.type}</strong>
+                <p>{event.message}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -273,4 +307,34 @@ function asObjectArray(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value)
     ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
     : [];
+}
+
+function formatTime(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function statusTone(status?: string | null): "passed" | "failed" | "uncertain" | "info" {
+  if (status === "passed" || status === "completed") {
+    return "passed";
+  }
+
+  if (status === "failed") {
+    return "failed";
+  }
+
+  if (status === "uncertain" || status === "running" || status === "pending") {
+    return "uncertain";
+  }
+
+  return "info";
 }

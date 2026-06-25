@@ -1,6 +1,7 @@
 export type CheckStatus = "passed" | "failed" | "uncertain";
 export type RunStatus = "pending" | "running" | "passed" | "failed" | "uncertain";
 export type VerificationLayer = "ui" | "api" | "db" | "diff";
+export type TimelineLayer = "run" | "planner" | VerificationLayer | "report";
 
 export type ProofCheck = {
   layer: VerificationLayer;
@@ -21,6 +22,16 @@ export type VerificationChecklist = {
   affected_files_hint: string[];
 };
 
+export type TimelineEvent = {
+  timestamp: string;
+  type: string;
+  layer: TimelineLayer;
+  status?: string | null;
+  message: string;
+  evidence: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+};
+
 export type ProofRun = {
   id: string;
   claim: string;
@@ -32,6 +43,7 @@ export type ProofRun = {
   target_db_url?: string | null;
   checklist: VerificationChecklist;
   checks: ProofCheck[];
+  timeline: TimelineEvent[];
   report_path?: string | null;
   report_url?: string | null;
 };

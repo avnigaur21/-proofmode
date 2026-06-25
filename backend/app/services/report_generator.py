@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app.schemas.runs import ProofRun
 from app.services.artifacts import artifact_root, artifact_url
 
@@ -27,6 +29,13 @@ class ReportGenerator:
         for check in run.checks:
             lines.append(f"- **{check.layer}**: `{check.status}` - {check.summary}")
 
+        if run.timeline:
+            lines.extend(["", "## Agent Behavior Timeline"])
+            for event in run.timeline:
+                lines.append(
+                    f"- `{event.timestamp.isoformat()}` **{event.layer}** `{event.status or 'info'}` - {event.message}"
+                )
+
         diff_check = next((check for check in run.checks if check.layer == "diff"), None)
         if diff_check and diff_check.evidence.get("changed_files"):
             lines.extend(["", "## Changed Files"])
@@ -47,11 +56,16 @@ class ReportGenerator:
         return "\n".join(lines)
 
     def write_markdown(self, run: ProofRun) -> dict[str, str]:
+        report_artifact = self.artifact_for(run)
+        report_path = report_artifact["path"]
+        Path(report_path).write_text(self.to_markdown(run), encoding="utf-8")
+        return report_artifact
+
+    def artifact_for(self, run: ProofRun) -> dict[str, str]:
         report_dir = artifact_root() / "reports"
         report_dir.mkdir(parents=True, exist_ok=True)
         report_filename = f"{run.id}.md"
         report_path = report_dir / report_filename
-        report_path.write_text(self.to_markdown(run), encoding="utf-8")
         return {
             "path": str(report_path),
             "url": artifact_url("reports", report_filename),

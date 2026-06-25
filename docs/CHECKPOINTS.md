@@ -143,6 +143,7 @@ Acceptance criteria:
 
 - Every run has a final status.
 - Every check has a layer, status, summary, and evidence object.
+- Every run includes a timeline of planner, verifier, report, and completion events.
 - Reports can later be converted to Markdown.
 - Run records are persisted so verification history survives backend restarts.
 
@@ -465,6 +466,7 @@ Required views:
 
 - Run list.
 - Run detail.
+- Agent behavior timeline.
 - Layer-by-layer results.
 - Screenshot evidence.
 - API response diffs.
@@ -476,6 +478,7 @@ Acceptance criteria:
 
 - A reviewer can understand what passed and failed.
 - Evidence is visible without reading raw JSON.
+- The timeline shows what ProofMode did in order for each run.
 - Failed checks stand out clearly.
 
 Current status:

@@ -21,6 +21,12 @@ class RunStatus(StrEnum):
     UNCERTAIN = "uncertain"
 
 
+class ApprovalDecision(StrEnum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    FIX_REQUESTED = "fix_requested"
+
+
 VerificationLayer = Literal["ui", "api", "db", "diff"]
 TimelineLayer = Literal["run", "planner", "ui", "api", "db", "diff", "report"]
 
@@ -43,6 +49,19 @@ class ProofRunCreate(BaseModel):
     target_url: str | None = None
     api_base_url: str | None = None
     target_db_url: str | None = None
+
+
+class ApprovalCreate(BaseModel):
+    decision: ApprovalDecision
+    note: str | None = None
+    reviewer: str | None = None
+
+
+class ApprovalRecord(BaseModel):
+    decision: ApprovalDecision
+    note: str | None = None
+    reviewer: str | None = None
+    decided_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ProofCheck(BaseModel):
@@ -74,5 +93,6 @@ class ProofRun(BaseModel):
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)
     checks: list[ProofCheck] = Field(default_factory=list)
     timeline: list[TimelineEvent] = Field(default_factory=list)
+    approval: ApprovalRecord | None = None
     report_path: str | None = None
     report_url: str | None = None

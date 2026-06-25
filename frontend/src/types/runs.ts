@@ -1,5 +1,6 @@
 export type CheckStatus = "passed" | "failed" | "uncertain";
 export type RunStatus = "pending" | "running" | "passed" | "failed" | "uncertain";
+export type ApprovalDecision = "approved" | "rejected" | "fix_requested";
 export type VerificationLayer = "ui" | "api" | "db" | "diff";
 export type TimelineLayer = "run" | "planner" | VerificationLayer | "report";
 
@@ -32,6 +33,13 @@ export type TimelineEvent = {
   metadata: Record<string, unknown>;
 };
 
+export type ApprovalRecord = {
+  decision: ApprovalDecision;
+  note?: string | null;
+  reviewer?: string | null;
+  decided_at: string;
+};
+
 export type ProofRun = {
   id: string;
   claim: string;
@@ -44,6 +52,7 @@ export type ProofRun = {
   checklist: VerificationChecklist;
   checks: ProofCheck[];
   timeline: TimelineEvent[];
+  approval?: ApprovalRecord | null;
   report_path?: string | null;
   report_url?: string | null;
 };
@@ -54,4 +63,10 @@ export type ProofRunCreate = {
   target_url?: string | null;
   api_base_url?: string | null;
   target_db_url?: string | null;
+};
+
+export type ApprovalCreate = {
+  decision: ApprovalDecision;
+  note?: string | null;
+  reviewer?: string | null;
 };

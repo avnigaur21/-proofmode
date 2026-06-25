@@ -41,6 +41,34 @@ def test_artifact_routes_reject_path_traversal() -> None:
     assert response.status_code == 404
 
 
+def test_approval_gate_persists_human_decision() -> None:
+    run_response = client.post("/runs", json={"claim": "Review approval gate"})
+    assert run_response.status_code == 200
+    run_id = run_response.json()["id"]
+
+    approval_response = client.post(
+        f"/runs/{run_id}/approval",
+        json={
+            "decision": "fix_requested",
+            "reviewer": "Avni",
+            "note": "Wire the button before calling it done.",
+        },
+    )
+
+    assert approval_response.status_code == 200
+    body = approval_response.json()
+    assert body["approval"]["decision"] == "fix_requested"
+    assert body["approval"]["reviewer"] == "Avni"
+    assert body["approval"]["note"] == "Wire the button before calling it done."
+    assert body["timeline"][-1]["type"] == "approval.fix_requested"
+
+    reloaded_service = RunService()
+    reloaded_run = reloaded_service.get_run(run_id)
+    assert reloaded_run is not None
+    assert reloaded_run.approval is not None
+    assert reloaded_run.approval.decision == "fix_requested"
+
+
 def test_db_snapshot_tracks_sqlite_row_count_changes(tmp_path) -> None:
     db_path = tmp_path / "proofmode.db"
     connection = sqlite3.connect(db_path)

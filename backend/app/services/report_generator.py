@@ -10,9 +10,20 @@ class ReportGenerator:
             f"# ProofMode Report: {run.claim}",
             "",
             f"Status: `{run.status}`",
-            "",
-            "## Planned Checklist",
         ]
+
+        if run.approval:
+            lines.extend(
+                [
+                    "",
+                    f"Approval: `{run.approval.decision}`",
+                    f"Reviewer: {run.approval.reviewer or 'Unspecified'}",
+                ]
+            )
+            if run.approval.note:
+                lines.append(f"Note: {run.approval.note}")
+
+        lines.extend(["", "## Planned Checklist"])
 
         for planned_check in run.checklist.checks:
             lines.append(

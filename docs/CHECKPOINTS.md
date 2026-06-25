@@ -485,6 +485,27 @@ Current status:
 
 - Partially started with the dashboard and run cards.
 
+### Checkpoint 15A: Approval Gate
+
+Turn the dashboard from a passive report viewer into a human decision point.
+
+Required decisions:
+
+- Approve proof.
+- Reject proof.
+- Request a fix with reviewer instructions.
+
+Acceptance criteria:
+
+- A reviewer can record an approval decision from the run detail page.
+- The decision is persisted in the run JSON record.
+- The decision appears in the Markdown report.
+- The timeline records the human decision event.
+
+Current status:
+
+- Started.
+
 ### Checkpoint 16: Docker Compose
 
 Make local setup predictable.

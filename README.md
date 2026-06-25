@@ -7,6 +7,7 @@ This repository starts with the smallest useful version of that idea:
 - a FastAPI backend that accepts verification runs
 - a React + Vite dashboard that displays run status
 - verifier modules for UI, API, DB, and Git diff checks
+- an approval gate for accepting, rejecting, or requesting fixes after review
 - a report shape that can grow into screenshots, logs, response diffs, and database evidence
 
 The DB verifier is database-URL based. SQLite works as the first local implementation target, and PostgreSQL support can use the same `target_db_url` contract.
@@ -24,6 +25,7 @@ The first checkpoint is intentionally simple. We are not trying to solve every v
 3. Run placeholder verifiers.
 4. Store a structured run record with timeline events.
 5. Display runs in the frontend dashboard.
+6. Record the human approval decision.
 
 ## Project Structure
 

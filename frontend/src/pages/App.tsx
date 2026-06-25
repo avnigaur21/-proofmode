@@ -150,7 +150,15 @@ export function App() {
           )}
         </section>
 
-        <RunDetail run={selectedRun} />
+        <RunDetail
+          onRunUpdated={(updatedRun) => {
+            setRuns((currentRuns) =>
+              currentRuns.map((run) => (run.id === updatedRun.id ? updatedRun : run))
+            );
+            setSelectedRunId(updatedRun.id);
+          }}
+          run={selectedRun}
+        />
       </section>
     </main>
   );

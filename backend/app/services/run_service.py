@@ -1,4 +1,4 @@
-from app.schemas.runs import ProofCheck, ProofRun, ProofRunCreate, RunStatus
+from app.schemas.runs import ApprovalCreate, ApprovalRecord, ProofCheck, ProofRun, ProofRunCreate, RunStatus
 from app.services.planner import VerificationPlanner
 from app.services.report_generator import ReportGenerator
 from app.services.run_store import RunStore
@@ -112,6 +112,32 @@ class RunService:
     def get_run(self, run_id: str) -> ProofRun | None:
         return self._runs.get(run_id)
 
+    def record_approval(self, run_id: str, payload: ApprovalCreate) -> ProofRun | None:
+        run = self._runs.get(run_id)
+        if run is None:
+            return None
+
+        run.approval = ApprovalRecord(
+            decision=payload.decision,
+            note=payload.note,
+            reviewer=payload.reviewer,
+        )
+        self._timeline.record(
+            run,
+            f"approval.{payload.decision}",
+            self._approval_message(run.approval),
+            layer="run",
+            status=payload.decision,
+            metadata={
+                "decision": payload.decision,
+                "reviewer": payload.reviewer,
+                "has_note": bool(payload.note),
+            },
+        )
+        self._report_generator.write_markdown(run)
+        self._store.save(run)
+        return run
+
     def _calculate_status(self, checks: list[ProofCheck]) -> RunStatus:
         if any(check.status == "failed" for check in checks):
             return RunStatus.FAILED
@@ -129,6 +155,14 @@ class RunService:
             "recommended_layers",
         )
         return {key: check.evidence[key] for key in evidence_keys if key in check.evidence}
+
+    def _approval_message(self, approval: ApprovalRecord) -> str:
+        reviewer = approval.reviewer or "Reviewer"
+        if approval.decision == "approved":
+            return f"{reviewer} approved the proof."
+        if approval.decision == "rejected":
+            return f"{reviewer} rejected the proof."
+        return f"{reviewer} requested fixes before approval."
 
 
 run_service = RunService()

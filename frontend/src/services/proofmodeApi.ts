@@ -1,4 +1,4 @@
-import type { ProofRun, ProofRunCreate } from "../types/runs";
+import type { ApprovalCreate, ProofRun, ProofRunCreate } from "../types/runs";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -35,6 +35,22 @@ export async function listRuns(): Promise<ProofRun[]> {
 
   if (!response.ok) {
     throw new Error("Unable to load ProofMode runs");
+  }
+
+  return response.json();
+}
+
+export async function recordApproval(runId: string, payload: ApprovalCreate): Promise<ProofRun> {
+  const response = await fetch(`${API_BASE_URL}/runs/${runId}/approval`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to record approval decision");
   }
 
   return response.json();

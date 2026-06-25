@@ -457,6 +457,94 @@ h2 {
   line-height: 1.25;
 }
 
+.approval-gate {
+  padding: 14px;
+  margin-bottom: 4px;
+  background: #f6fbf8;
+  border: 1px solid #d6e8df;
+  border-radius: 8px;
+}
+
+.approval-record {
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #ffffff;
+  border: 1px solid #e0eadf;
+  border-radius: 8px;
+}
+
+.approval-record strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.approval-record p,
+.approval-record blockquote {
+  margin: 0;
+  color: #5d6961;
+  line-height: 1.45;
+}
+
+.approval-record blockquote {
+  padding: 8px 10px;
+  margin-top: 9px;
+  background: #f9f7f2;
+  border-left: 3px solid #0b6b58;
+  border-radius: 0 8px 8px 0;
+}
+
+.approval-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 0.65fr) minmax(0, 1.35fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.approval-fields label {
+  margin: 0;
+  color: #46524b;
+  font-size: 0.8rem;
+}
+
+.approval-fields input {
+  min-height: 40px;
+  margin-top: 7px;
+  font-size: 0.9rem;
+}
+
+.approval-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.approval-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.approval-button--approve {
+  background: #0b6b58;
+  border-color: #0b6b58;
+}
+
+.approval-button--fix {
+  background: #94660f;
+  border-color: #94660f;
+}
+
+.approval-button--reject {
+  background: #a83333;
+  border-color: #a83333;
+}
+
 .detail-section {
   padding: 16px 0;
   border-top: 1px solid #e7e1d6;
@@ -786,6 +874,8 @@ h2 {
   }
 
   .claim-form-row,
+  .approval-actions,
+  .approval-fields,
   .checks-grid,
   .run-metrics {
     grid-template-columns: 1fr;

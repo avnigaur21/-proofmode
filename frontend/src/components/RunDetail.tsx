@@ -10,10 +10,12 @@ import {
   Globe2,
   Image,
   MonitorCheck,
+  Wrench,
+  XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { artifactUrl, loadTextArtifact } from "../services/proofmodeApi";
-import type { ProofCheck, ProofRun, TimelineEvent, VerificationLayer } from "../types/runs";
+import { artifactUrl, loadTextArtifact, recordApproval } from "../services/proofmodeApi";
+import type { ApprovalDecision, ProofCheck, ProofRun, TimelineEvent, VerificationLayer } from "../types/runs";
 import { MarkdownReport } from "./MarkdownReport";
 
 const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
@@ -23,9 +25,19 @@ const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
   diff: GitBranch,
 };
 
-export function RunDetail({ run }: { run: ProofRun | null }) {
+export function RunDetail({
+  onRunUpdated,
+  run,
+}: {
+  onRunUpdated: (run: ProofRun) => void;
+  run: ProofRun | null;
+}) {
   const [reportMarkdown, setReportMarkdown] = useState<string>("");
   const [reportError, setReportError] = useState<string | null>(null);
+  const [approvalNote, setApprovalNote] = useState("");
+  const [reviewer, setReviewer] = useState("");
+  const [approvalError, setApprovalError] = useState<string | null>(null);
+  const [pendingDecision, setPendingDecision] = useState<ApprovalDecision | null>(null);
 
   useEffect(() => {
     setReportMarkdown("");
@@ -56,21 +68,56 @@ export function RunDetail({ run }: { run: ProofRun | null }) {
     );
   }
 
+  const currentRun = run;
   const StatusIcon =
-    run.status === "passed" ? CheckCircle2 : run.status === "failed" ? AlertTriangle : CircleHelp;
+    currentRun.status === "passed"
+      ? CheckCircle2
+      : currentRun.status === "failed"
+        ? AlertTriangle
+        : CircleHelp;
+
+  async function handleApproval(decision: ApprovalDecision) {
+    setPendingDecision(decision);
+    setApprovalError(null);
+
+    try {
+      const updatedRun = await recordApproval(currentRun.id, {
+        decision,
+        note: emptyToNull(approvalNote),
+        reviewer: emptyToNull(reviewer),
+      });
+      onRunUpdated(updatedRun);
+      setApprovalNote("");
+    } catch {
+      setApprovalError("ProofMode could not save the approval decision.");
+    } finally {
+      setPendingDecision(null);
+    }
+  }
 
   return (
     <section className="detail-panel">
       <div className="detail-header">
         <div>
           <p className="eyebrow">Run Detail</p>
-          <h2>{run.claim}</h2>
+          <h2>{currentRun.claim}</h2>
         </div>
-        <span className={`status-pill status-pill--${run.status}`}>
+        <span className={`status-pill status-pill--${currentRun.status}`}>
           <StatusIcon size={16} />
-          {run.status}
+          {currentRun.status}
         </span>
       </div>
+
+      <ApprovalGate
+        error={approvalError}
+        isPending={pendingDecision}
+        note={approvalNote}
+        onDecision={handleApproval}
+        onNoteChange={setApprovalNote}
+        onReviewerChange={setReviewer}
+        reviewer={reviewer}
+        run={currentRun}
+      />
 
       <section className="detail-section">
         <div className="section-title-row">
@@ -78,7 +125,7 @@ export function RunDetail({ run }: { run: ProofRun | null }) {
           <h3>Generated Checklist</h3>
         </div>
         <div className="checklist-table">
-          {run.checklist.checks.map((check) => (
+          {currentRun.checklist.checks.map((check) => (
             <div className="checklist-item" key={`${check.layer}-${check.type}-${check.description}`}>
               <span>{check.layer.toUpperCase()}</span>
               <div>
@@ -95,7 +142,7 @@ export function RunDetail({ run }: { run: ProofRun | null }) {
       <EvidenceSection check={checksByLayer.get("db")} layer="db" />
       <EvidenceSection check={checksByLayer.get("diff")} layer="diff" />
 
-      <TimelineSection events={run.timeline ?? []} />
+      <TimelineSection events={currentRun.timeline ?? []} />
 
       <section className="detail-section">
         <div className="section-title-row">
@@ -109,6 +156,102 @@ export function RunDetail({ run }: { run: ProofRun | null }) {
           <p className="muted-text">No report artifact loaded yet.</p>
         )}
       </section>
+    </section>
+  );
+}
+
+function ApprovalGate({
+  error,
+  isPending,
+  note,
+  onDecision,
+  onNoteChange,
+  onReviewerChange,
+  reviewer,
+  run,
+}: {
+  error: string | null;
+  isPending: ApprovalDecision | null;
+  note: string;
+  onDecision: (decision: ApprovalDecision) => void;
+  onNoteChange: (value: string) => void;
+  onReviewerChange: (value: string) => void;
+  reviewer: string;
+  run: ProofRun;
+}) {
+  return (
+    <section className="approval-gate">
+      <div className="section-title-row">
+        <ClipboardCheck size={18} />
+        <h3>Approval Gate</h3>
+        {run.approval ? (
+          <span className={`mini-status mini-status--${approvalTone(run.approval.decision)}`}>
+            {run.approval.decision.replace("_", " ")}
+          </span>
+        ) : null}
+      </div>
+
+      {run.approval ? (
+        <div className="approval-record">
+          <strong>{approvalLabel(run.approval.decision)}</strong>
+          <p>
+            {run.approval.reviewer || "Reviewer"} decided at {formatDateTime(run.approval.decided_at)}
+          </p>
+          {run.approval.note ? <blockquote>{run.approval.note}</blockquote> : null}
+        </div>
+      ) : (
+        <p className="muted-text">No human decision has been recorded for this proof yet.</p>
+      )}
+
+      <div className="approval-fields">
+        <label>
+          Reviewer
+          <input
+            onChange={(event) => onReviewerChange(event.target.value)}
+            placeholder="Your name"
+            value={reviewer}
+          />
+        </label>
+        <label>
+          Decision note
+          <input
+            onChange={(event) => onNoteChange(event.target.value)}
+            placeholder="Reason, fix instruction, or approval context"
+            value={note}
+          />
+        </label>
+      </div>
+
+      <div className="approval-actions">
+        <button
+          className="approval-button approval-button--approve"
+          disabled={Boolean(isPending)}
+          onClick={() => onDecision("approved")}
+          type="button"
+        >
+          <CheckCircle2 size={16} />
+          {isPending === "approved" ? "Saving" : "Approve"}
+        </button>
+        <button
+          className="approval-button approval-button--fix"
+          disabled={Boolean(isPending)}
+          onClick={() => onDecision("fix_requested")}
+          type="button"
+        >
+          <Wrench size={16} />
+          {isPending === "fix_requested" ? "Saving" : "Request Fix"}
+        </button>
+        <button
+          className="approval-button approval-button--reject"
+          disabled={Boolean(isPending)}
+          onClick={() => onDecision("rejected")}
+          type="button"
+        >
+          <XCircle size={16} />
+          {isPending === "rejected" ? "Saving" : "Reject"}
+        </button>
+      </div>
+      {error ? <p className="error-text">{error}</p> : null}
     </section>
   );
 }
@@ -324,17 +467,59 @@ function formatTime(value: string): string {
 }
 
 function statusTone(status?: string | null): "passed" | "failed" | "uncertain" | "info" {
-  if (status === "passed" || status === "completed") {
+  if (status === "passed" || status === "completed" || status === "approved") {
     return "passed";
   }
 
-  if (status === "failed") {
+  if (status === "failed" || status === "rejected") {
     return "failed";
   }
 
-  if (status === "uncertain" || status === "running" || status === "pending") {
+  if (status === "uncertain" || status === "running" || status === "pending" || status === "fix_requested") {
     return "uncertain";
   }
 
   return "info";
+}
+
+function approvalTone(decision: ApprovalDecision): "passed" | "failed" | "uncertain" {
+  if (decision === "approved") {
+    return "passed";
+  }
+
+  if (decision === "rejected") {
+    return "failed";
+  }
+
+  return "uncertain";
+}
+
+function approvalLabel(decision: ApprovalDecision): string {
+  if (decision === "approved") {
+    return "Proof approved";
+  }
+
+  if (decision === "rejected") {
+    return "Proof rejected";
+  }
+
+  return "Fix requested";
+}
+
+function emptyToNull(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }

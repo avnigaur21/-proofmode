@@ -112,6 +112,15 @@ class RunService:
     def get_run(self, run_id: str) -> ProofRun | None:
         return self._runs.get(run_id)
 
+    def save_run(self, run: ProofRun) -> ProofRun:
+        report_artifact = self._report_generator.artifact_for(run)
+        run.report_path = report_artifact["path"]
+        run.report_url = report_artifact["url"]
+        self._report_generator.write_markdown(run)
+        self._runs[run.id] = run
+        self._store.save(run)
+        return run
+
     def record_approval(self, run_id: str, payload: ApprovalCreate) -> ProofRun | None:
         run = self._runs.get(run_id)
         if run is None:

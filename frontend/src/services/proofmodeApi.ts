@@ -40,6 +40,18 @@ export async function listRuns(): Promise<ProofRun[]> {
   return response.json();
 }
 
+export async function seedDemoRuns(): Promise<ProofRun[]> {
+  const response = await fetch(`${API_BASE_URL}/demo/seed`, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to seed demo runs");
+  }
+
+  return response.json();
+}
+
 export async function recordApproval(runId: string, payload: ApprovalCreate): Promise<ProofRun> {
   const response = await fetch(`${API_BASE_URL}/runs/${runId}/approval`, {
     method: "POST",

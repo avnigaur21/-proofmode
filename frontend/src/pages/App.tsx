@@ -1,8 +1,8 @@
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Sparkles } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { RunCard } from "../components/RunCard";
 import { RunDetail } from "../components/RunDetail";
-import { createRun, listRuns } from "../services/proofmodeApi";
+import { createRun, listRuns, seedDemoRuns } from "../services/proofmodeApi";
 import type { ProofRun, ProofRunCreate } from "../types/runs";
 
 export function App() {
@@ -14,6 +14,7 @@ export function App() {
   const [runs, setRuns] = useState<ProofRun[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSeedingDemo, setIsSeedingDemo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,6 +56,22 @@ export function App() {
     }
   }
 
+  async function handleSeedDemo() {
+    setIsSeedingDemo(true);
+    setError(null);
+
+    try {
+      const demoRuns = await seedDemoRuns();
+      const loadedRuns = await listRuns();
+      setRuns(loadedRuns);
+      setSelectedRunId(demoRuns[0]?.id ?? loadedRuns[0]?.id ?? null);
+    } catch {
+      setError("ProofMode could not seed demo runs.");
+    } finally {
+      setIsSeedingDemo(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="topbar">
@@ -74,8 +91,19 @@ export function App() {
 
       <section className="claim-panel">
         <div className="panel-heading">
-          <p className="eyebrow">Verification Console</p>
-          <h2>New Proof Run</h2>
+          <div>
+            <p className="eyebrow">Verification Console</p>
+            <h2>New Proof Run</h2>
+          </div>
+          <button
+            className="demo-seed-button"
+            disabled={isSubmitting || isSeedingDemo}
+            onClick={handleSeedDemo}
+            type="button"
+          >
+            <Sparkles size={16} />
+            {isSeedingDemo ? "Seeding" : "Seed Demo Runs"}
+          </button>
         </div>
         <form onSubmit={handleSubmit}>
           <label htmlFor="claim">Task completion claim</label>

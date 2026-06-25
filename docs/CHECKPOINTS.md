@@ -506,6 +506,27 @@ Current status:
 
 - Started.
 
+### Checkpoint 15B: Demo Mode
+
+Seed walkthrough runs that make the product value obvious without needing a separate broken app.
+
+Required scenarios:
+
+- Ghost completion: the UI exists but the interaction is not wired.
+- Contract drift: an API response shape changed from the baseline.
+- State blindness: the API returned success but database state did not change.
+
+Acceptance criteria:
+
+- The backend exposes a demo seed endpoint.
+- The dashboard can seed demo runs with one click.
+- Demo runs are persisted as JSON records and Markdown reports.
+- Demo evidence includes meaningful checklist, timeline, and layer-level failures.
+
+Current status:
+
+- Started.
+
 ### Checkpoint 16: Docker Compose
 
 Make local setup predictable.

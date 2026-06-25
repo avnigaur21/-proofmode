@@ -8,6 +8,7 @@ This repository starts with the smallest useful version of that idea:
 - a React + Vite dashboard that displays run status
 - verifier modules for UI, API, DB, and Git diff checks
 - an approval gate for accepting, rejecting, or requesting fixes after review
+- demo scenarios for ghost completion, contract drift, and state blindness
 - a report shape that can grow into screenshots, logs, response diffs, and database evidence
 
 The DB verifier is database-URL based. SQLite works as the first local implementation target, and PostgreSQL support can use the same `target_db_url` contract.
@@ -79,6 +80,14 @@ cd backend
 pip install -r requirements-dev.txt
 pytest tests
 ```
+
+Seed demo runs:
+
+```bash
+curl -X POST http://localhost:8000/demo/seed
+```
+
+The dashboard also exposes a **Seed Demo Runs** button. It creates three walkthrough runs that show ghost completion, contract drift, and state blindness using persisted JSON run records and reports.
 
 Frontend:
 

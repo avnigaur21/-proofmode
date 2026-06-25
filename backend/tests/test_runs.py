@@ -69,6 +69,29 @@ def test_approval_gate_persists_human_decision() -> None:
     assert reloaded_run.approval.decision == "fix_requested"
 
 
+def test_demo_seed_creates_walkthrough_runs() -> None:
+    response = client.post("/demo/seed")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [run["id"] for run in body] == [
+        "demo-ghost-completion",
+        "demo-contract-drift",
+        "demo-state-blindness",
+    ]
+    assert all(run["status"] == "failed" for run in body)
+    assert body[0]["timeline"][0]["type"] == "demo.seeded"
+    assert body[1]["report_url"].startswith("/artifacts/reports/")
+
+    report_response = client.get(body[2]["report_url"])
+    assert report_response.status_code == 200
+    assert "State blindness" in report_response.text or "database row" in report_response.text
+
+    snapshot_response = client.get("/artifacts/snapshots/api/demo-contract-drift.json")
+    assert snapshot_response.status_code == 200
+    assert "user.email removed" in snapshot_response.text
+
+
 def test_db_snapshot_tracks_sqlite_row_count_changes(tmp_path) -> None:
     db_path = tmp_path / "proofmode.db"
     connection = sqlite3.connect(db_path)

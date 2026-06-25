@@ -247,6 +247,25 @@ h2 {
   border-color: #0b6b58;
 }
 
+.demo-seed-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 13px;
+  color: #0b6b58;
+  font-size: 0.86rem;
+  background: #edf6f2;
+  border-color: #c9ded6;
+  white-space: nowrap;
+}
+
+.demo-seed-button:hover:not(:disabled) {
+  color: #ffffff;
+  background: #0b6b58;
+  border-color: #0b6b58;
+}
+
 .error-text {
   margin: 14px 0 0;
   color: #a83333;
@@ -882,6 +901,7 @@ h2 {
   }
 
   .run-card__header,
+  .panel-heading,
   .detail-header {
     flex-direction: column;
   }

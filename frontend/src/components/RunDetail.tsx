@@ -10,6 +10,7 @@ import {
   Globe2,
   Image,
   MonitorCheck,
+  Sparkles,
   Wrench,
   XCircle,
 } from "lucide-react";
@@ -119,6 +120,8 @@ export function RunDetail({
         run={currentRun}
       />
 
+      <PlannerExplainability run={currentRun} />
+
       <section className="detail-section">
         <div className="section-title-row">
           <ClipboardCheck size={18} />
@@ -160,6 +163,71 @@ export function RunDetail({
         )}
       </section>
     </section>
+  );
+}
+
+function PlannerExplainability({ run }: { run: ProofRun }) {
+  const planner = run.checklist.planner;
+  const plannerTimeline = run.timeline.find(
+    (event) =>
+      event.type === "planner.llm_completed" ||
+      event.type === "planner.fallback_used" ||
+      event.type === "planner.completed"
+  );
+  const influencedFiles = run.checklist.affected_files_hint.slice(0, 6);
+
+  return (
+    <section className="planner-panel">
+      <div className="section-title-row">
+        <Sparkles size={18} />
+        <h3>Planner Explainability</h3>
+        <span className={`planner-badge planner-badge--${plannerTone(planner?.source)}`}>
+          {plannerLabel(planner)}
+        </span>
+      </div>
+
+      <div className="planner-grid">
+        <PlannerMetric label="Mode" value={planner?.mode ?? "deterministic"} />
+        <PlannerMetric label="Provider" value={planner?.provider ?? "local"} />
+        <PlannerMetric label="Model" value={planner?.model ?? "n/a"} />
+        <PlannerMetric label="Diff files read" value={String(planner?.diff_files_used ?? 0)} />
+        <PlannerMetric label="Diff truncated" value={planner?.diff_truncated ? "Yes" : "No"} />
+        <PlannerMetric label="Fallback" value={planner?.used_fallback ? "Yes" : "No"} />
+      </div>
+
+      {planner?.used_fallback ? (
+        <div className="planner-note planner-note--fallback">
+          <strong>Fallback used</strong>
+          <p>{planner.reason ? fallbackReason(planner.reason) : "The LLM planner could not produce a valid checklist."}</p>
+        </div>
+      ) : null}
+
+      {plannerTimeline ? (
+        <div className="planner-note">
+          <strong>{plannerTimeline.type}</strong>
+          <p>{plannerTimeline.message}</p>
+        </div>
+      ) : null}
+
+      {influencedFiles.length > 0 ? (
+        <div className="planner-files">
+          {influencedFiles.map((file) => (
+            <code key={file}>{file}</code>
+          ))}
+        </div>
+      ) : (
+        <p className="muted-text">No specific influenced files were recorded for this checklist.</p>
+      )}
+    </section>
+  );
+}
+
+function PlannerMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="planner-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 
@@ -553,4 +621,15 @@ function plannerTone(source?: string): "deterministic" | "fallback" | "llm" {
   }
 
   return "deterministic";
+}
+
+function fallbackReason(reason: string): string {
+  const reasons: Record<string, string> = {
+    llm_output_invalid: "The LLM response did not match ProofMode's checklist schema.",
+    llm_provider_error: "The configured LLM provider was unavailable or returned an error.",
+    llm_returned_no_checks: "The LLM returned no usable verification checks.",
+    llm_planner_failed: "The LLM planner failed, so ProofMode used deterministic checks.",
+  };
+
+  return reasons[reason] ?? reason;
 }

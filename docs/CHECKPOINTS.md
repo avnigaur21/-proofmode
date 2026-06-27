@@ -454,11 +454,12 @@ Acceptance criteria:
 - Checklist is visible in the frontend.
 - The planner can use Git diff context to generate more specific checks.
 - If LLM-assisted planning fails, ProofMode falls back to deterministic checks.
+- OpenAI-compatible planning can be enabled with environment variables while the local heuristic provider remains the default.
 - The planner can be improved without rewriting verifiers.
 
 Current status:
 
-- Started with deterministic and LLM-assisted planner modes.
+- Started with deterministic, heuristic LLM-assisted, and OpenAI provider modes.
 
 ### Checkpoint 15: Report UI
 

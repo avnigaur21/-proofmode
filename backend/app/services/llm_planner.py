@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from app.schemas.runs import PlannedCheck, PlannerMetadata, VerificationChecklist
 from app.services.git_diff_context import GitDiffContext
-from app.services.llm_provider import HeuristicLlmPlannerProvider, LlmPlannerProvider
+from app.services.llm_provider import LlmPlannerProvider, create_llm_planner_provider
 
 
 class LlmChecklistResponse(BaseModel):
@@ -18,7 +18,7 @@ class LlmPlannerResult(BaseModel):
 
 class LlmVerificationPlanner:
     def __init__(self, provider: LlmPlannerProvider | None = None) -> None:
-        self._provider = provider or HeuristicLlmPlannerProvider()
+        self._provider = provider or create_llm_planner_provider()
 
     def create_checklist(self, claim: str, diff_context: GitDiffContext | None) -> LlmPlannerResult:
         metadata = PlannerMetadata(
@@ -33,9 +33,13 @@ class LlmVerificationPlanner:
         try:
             raw_response = self._provider.generate_checklist(claim, diff_context)
             parsed = LlmChecklistResponse.model_validate(raw_response)
-        except (ValidationError, ValueError, TypeError) as error:
+        except ValidationError as error:
             metadata.used_fallback = True
             metadata.reason = "llm_output_invalid"
+            return LlmPlannerResult(metadata=metadata, error=str(error))
+        except Exception as error:
+            metadata.used_fallback = True
+            metadata.reason = "llm_provider_error"
             return LlmPlannerResult(metadata=metadata, error=str(error))
 
         if not parsed.checks:

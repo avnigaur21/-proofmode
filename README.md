@@ -110,7 +110,17 @@ Planner mode:
 PROOFMODE_PLANNER_MODE=llm
 ```
 
-The current LLM planner path uses a local heuristic provider by default, which lets the planner consume Git diff context without requiring API keys. If planner output is invalid or unavailable, ProofMode falls back to the deterministic checklist and records that fallback in the run timeline.
+The LLM planner path uses a local heuristic provider by default, which lets the planner consume Git diff context without requiring API keys. To call OpenAI through the provider abstraction:
+
+```bash
+PROOFMODE_PLANNER_MODE=llm
+PROOFMODE_LLM_PROVIDER=openai
+PROOFMODE_LLM_MODEL=gpt-4.1-mini
+OPENAI_API_KEY=...
+```
+
+If provider output is invalid or unavailable, ProofMode falls back to the deterministic checklist and records that fallback in the run timeline.
+The dashboard also shows a Planner Explainability panel for each run, including provider, model, diff files read, truncation, fallback status, and influenced files.
 
 ## MVP Roadmap
 

@@ -3,8 +3,9 @@ from pathlib import Path
 from typing import Any
 
 from app.schemas.runs import ProofRun
-from app.services.git_diff_context import GitDiffContext
+from app.services.git_diff_context import GitDiffContext, GitDiffContextService
 from app.services.llm_planner import LlmVerificationPlanner
+from app.services.llm_provider import OpenAiPlannerProvider
 from app.services.planner import VerificationPlanner
 
 
@@ -34,6 +35,49 @@ class InvalidProvider:
 
     def generate_checklist(self, claim: str, diff_context: GitDiffContext | None) -> dict[str, Any]:
         return {"checks": [{"layer": "not-a-layer", "type": "bad", "description": "bad"}]}
+
+
+class ErrorProvider:
+    provider_name = "error"
+    model_name = "error-model"
+
+    def generate_checklist(self, claim: str, diff_context: GitDiffContext | None) -> dict[str, Any]:
+        raise RuntimeError("provider unavailable")
+
+
+class FakeHttpResponse:
+    def __init__(self, data: dict[str, Any]) -> None:
+        self._data = data
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, Any]:
+        return self._data
+
+
+class FakeHttpClient:
+    def __init__(self) -> None:
+        self.request_json: dict[str, Any] | None = None
+
+    def post(self, url: str, headers: dict[str, str], json: dict[str, Any]) -> FakeHttpResponse:
+        self.request_json = json
+        return FakeHttpResponse(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": (
+                                '{"checks":[{"layer":"api","type":"endpoint_contract",'
+                                '"description":"Verify login still returns a token.",'
+                                '"target":"POST /auth/login"}],'
+                                '"affected_files_hint":["backend/app/routers/auth.py"]}'
+                            )
+                        }
+                    }
+                ]
+            }
+        )
 
 
 def test_llm_planner_uses_git_diff_context_for_specific_checks(tmp_path: Path) -> None:
@@ -77,6 +121,47 @@ def test_llm_planner_falls_back_when_provider_output_is_invalid(tmp_path: Path) 
     assert checklist.planner.used_fallback is True
     assert checklist.planner.reason == "llm_output_invalid"
     assert any(check.type == "api_health_reachable" for check in checklist.checks)
+
+
+def test_llm_planner_falls_back_when_provider_raises(tmp_path: Path) -> None:
+    repo_path = _repo_with_auth_change(tmp_path)
+    planner = VerificationPlanner(
+        mode="llm",
+        llm_planner=LlmVerificationPlanner(ErrorProvider()),
+    )
+
+    checklist = planner.create_checklist(
+        ProofRun(
+            claim="Agent updated login endpoint",
+            repo_path=str(repo_path),
+            api_base_url="http://localhost:8000/health",
+        )
+    )
+
+    assert checklist.planner.source == "deterministic_fallback"
+    assert checklist.planner.provider == "error"
+    assert checklist.planner.reason == "llm_provider_error"
+    assert any(check.type == "api_health_reachable" for check in checklist.checks)
+
+
+def test_openai_provider_builds_structured_output_request(tmp_path: Path) -> None:
+    repo_path = _repo_with_auth_change(tmp_path)
+    diff_context = GitDiffContextService().build(str(repo_path))
+    fake_client = FakeHttpClient()
+    provider = OpenAiPlannerProvider(
+        api_key="test-key",
+        model_name="test-model",
+        base_url="https://example.test/v1",
+        http_client=fake_client,  # type: ignore[arg-type]
+    )
+
+    response = provider.generate_checklist("Agent updated login endpoint", diff_context)
+
+    assert response["checks"][0]["target"] == "POST /auth/login"
+    assert fake_client.request_json is not None
+    assert fake_client.request_json["model"] == "test-model"
+    assert fake_client.request_json["response_format"]["type"] == "json_schema"
+    assert "backend/app/routers/auth.py" in fake_client.request_json["messages"][1]["content"]
 
 
 def _repo_with_auth_change(tmp_path: Path) -> Path:

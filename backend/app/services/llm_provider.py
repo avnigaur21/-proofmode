@@ -1,4 +1,8 @@
+import json
+import os
 from typing import Any, Protocol
+
+import httpx
 
 from app.services.git_diff_context import GitDiffContext
 
@@ -102,3 +106,129 @@ class HeuristicLlmPlannerProvider:
             seen.add(key)
             deduped.append(check)
         return deduped
+
+
+class OpenAiPlannerProvider:
+    provider_name = "openai"
+
+    def __init__(
+        self,
+        *,
+        api_key: str | None = None,
+        model_name: str | None = None,
+        base_url: str | None = None,
+        http_client: httpx.Client | None = None,
+    ) -> None:
+        self._api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.model_name = model_name or os.getenv("PROOFMODE_LLM_MODEL", "gpt-4.1-mini")
+        self._base_url = (base_url or os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")).rstrip("/")
+        self._http_client = http_client or httpx.Client(timeout=30)
+
+    def generate_checklist(self, claim: str, diff_context: GitDiffContext | None) -> dict[str, Any]:
+        if not self._api_key:
+            raise ValueError("OPENAI_API_KEY is required when PROOFMODE_LLM_PROVIDER=openai.")
+
+        response = self._http_client.post(
+            f"{self._base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+            },
+            json=self._request_payload(claim, diff_context),
+        )
+        response.raise_for_status()
+        return self._parse_response(response.json())
+
+    def _request_payload(self, claim: str, diff_context: GitDiffContext | None) -> dict[str, Any]:
+        return {
+            "model": self.model_name,
+            "temperature": 0,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are ProofMode's verification planner. Generate a concise checklist of "
+                        "specific checks needed to verify an AI coding agent's completion claim. "
+                        "Use only these layers: ui, api, db, diff. Do not invent precise endpoints "
+                        "unless the diff strongly implies them. Return JSON only."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {
+                            "claim": claim,
+                            "diff_context": diff_context.model_dump(mode="json") if diff_context else None,
+                            "required_output": {
+                                "checks": [
+                                    {
+                                        "layer": "ui | api | db | diff",
+                                        "type": "short_snake_case_check_type",
+                                        "description": "human-readable verification instruction",
+                                        "target": "specific endpoint, selector, table, file, or null",
+                                    }
+                                ],
+                                "affected_files_hint": ["changed/file/path.py"],
+                            },
+                        },
+                        indent=2,
+                    ),
+                },
+            ],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "proofmode_verification_checklist",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "checks": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "properties": {
+                                        "layer": {"type": "string", "enum": ["ui", "api", "db", "diff"]},
+                                        "type": {"type": "string"},
+                                        "description": {"type": "string"},
+                                        "target": {"type": ["string", "null"]},
+                                    },
+                                    "required": ["layer", "type", "description", "target"],
+                                },
+                            },
+                            "affected_files_hint": {"type": "array", "items": {"type": "string"}},
+                        },
+                        "required": ["checks", "affected_files_hint"],
+                    },
+                },
+            },
+        }
+
+    def _parse_response(self, data: dict[str, Any]) -> dict[str, Any]:
+        try:
+            message = data["choices"][0]["message"]
+            content = message["content"]
+        except (KeyError, IndexError, TypeError) as error:
+            raise ValueError("OpenAI planner response did not include message content.") from error
+
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("OpenAI planner response content was empty.")
+
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError as error:
+            raise ValueError("OpenAI planner response was not valid JSON.") from error
+
+        if not isinstance(parsed, dict):
+            raise ValueError("OpenAI planner response JSON must be an object.")
+
+        return parsed
+
+
+def create_llm_planner_provider() -> LlmPlannerProvider:
+    provider = os.getenv("PROOFMODE_LLM_PROVIDER", "heuristic").lower()
+    if provider == "openai":
+        return OpenAiPlannerProvider()
+    return HeuristicLlmPlannerProvider()

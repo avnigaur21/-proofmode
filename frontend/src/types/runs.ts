@@ -21,6 +21,16 @@ export type PlannedCheck = {
 export type VerificationChecklist = {
   checks: PlannedCheck[];
   affected_files_hint: string[];
+  planner?: {
+    mode: string;
+    source: string;
+    provider?: string | null;
+    model?: string | null;
+    used_fallback: boolean;
+    reason?: string | null;
+    diff_files_used: number;
+    diff_truncated: boolean;
+  };
 };
 
 export type TimelineEvent = {

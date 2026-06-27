@@ -47,15 +47,22 @@ class RunService:
         )
 
         run.checklist = self._planner.create_checklist(run)
+        planner_event_type = "planner.completed"
+        if run.checklist.planner.used_fallback:
+            planner_event_type = "planner.fallback_used"
+        elif run.checklist.planner.source == "llm":
+            planner_event_type = "planner.llm_completed"
+
         self._timeline.record(
             run,
-            "planner.completed",
+            planner_event_type,
             f"Generated {len(run.checklist.checks)} verification checks.",
             layer="planner",
             status="completed",
             metadata={
                 "check_count": len(run.checklist.checks),
                 "layers": [check.layer for check in run.checklist.checks],
+                "planner": run.checklist.planner.model_dump(mode="json"),
             },
         )
 

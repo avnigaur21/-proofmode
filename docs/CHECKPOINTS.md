@@ -452,11 +452,13 @@ Acceptance criteria:
 - Every run has a checklist.
 - Checklist is visible in the API response.
 - Checklist is visible in the frontend.
+- The planner can use Git diff context to generate more specific checks.
+- If LLM-assisted planning fails, ProofMode falls back to deterministic checks.
 - The planner can be improved without rewriting verifiers.
 
 Current status:
 
-- Started.
+- Started with deterministic and LLM-assisted planner modes.
 
 ### Checkpoint 15: Report UI
 

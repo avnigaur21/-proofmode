@@ -9,6 +9,7 @@ This repository starts with the smallest useful version of that idea:
 - verifier modules for UI, API, DB, and Git diff checks
 - an approval gate for accepting, rejecting, or requesting fixes after review
 - demo scenarios for ghost completion, contract drift, and state blindness
+- a planner that can use Git diff context to generate targeted verification checklists
 - a report shape that can grow into screenshots, logs, response diffs, and database evidence
 
 The DB verifier is database-URL based. SQLite works as the first local implementation target, and PostgreSQL support can use the same `target_db_url` contract.
@@ -102,6 +103,14 @@ Docker:
 ```bash
 docker compose up --build
 ```
+
+Planner mode:
+
+```bash
+PROOFMODE_PLANNER_MODE=llm
+```
+
+The current LLM planner path uses a local heuristic provider by default, which lets the planner consume Git diff context without requiring API keys. If planner output is invalid or unavailable, ProofMode falls back to the deterministic checklist and records that fallback in the run timeline.
 
 ## MVP Roadmap
 

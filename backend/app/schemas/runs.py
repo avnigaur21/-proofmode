@@ -38,9 +38,21 @@ class PlannedCheck(BaseModel):
     target: str | None = None
 
 
+class PlannerMetadata(BaseModel):
+    mode: str = "deterministic"
+    source: str = "deterministic"
+    provider: str | None = None
+    model: str | None = None
+    used_fallback: bool = False
+    reason: str | None = None
+    diff_files_used: int = 0
+    diff_truncated: bool = False
+
+
 class VerificationChecklist(BaseModel):
     checks: list[PlannedCheck] = Field(default_factory=list)
     affected_files_hint: list[str] = Field(default_factory=list)
+    planner: PlannerMetadata = Field(default_factory=PlannerMetadata)
 
 
 class ProofRunCreate(BaseModel):

@@ -123,6 +123,9 @@ export function RunDetail({
         <div className="section-title-row">
           <ClipboardCheck size={18} />
           <h3>Generated Checklist</h3>
+          <span className={`planner-badge planner-badge--${plannerTone(currentRun.checklist.planner?.source)}`}>
+            {plannerLabel(currentRun.checklist.planner)}
+          </span>
         </div>
         <div className="checklist-table">
           {currentRun.checklist.checks.map((check) => (
@@ -522,4 +525,32 @@ function formatDateTime(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+function plannerLabel(planner?: ProofRun["checklist"]["planner"]): string {
+  if (!planner) {
+    return "Planner: deterministic";
+  }
+
+  if (planner.used_fallback) {
+    return "Planner: fallback";
+  }
+
+  if (planner.source === "llm") {
+    return `Planner: LLM${planner.provider ? ` (${planner.provider})` : ""}`;
+  }
+
+  return "Planner: deterministic";
+}
+
+function plannerTone(source?: string): "deterministic" | "fallback" | "llm" {
+  if (source === "llm") {
+    return "llm";
+  }
+
+  if (source?.includes("fallback")) {
+    return "fallback";
+  }
+
+  return "deterministic";
 }

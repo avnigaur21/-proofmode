@@ -1,9 +1,46 @@
+import os
+
 from app.schemas.runs import PlannedCheck, ProofRun, VerificationChecklist
 from app.services.diff_analysis import recommended_layers, summarize_categories
+from app.services.git_diff_context import GitDiffContextService
+from app.services.llm_planner import LlmVerificationPlanner
 
 
 class VerificationPlanner:
+    def __init__(
+        self,
+        *,
+        mode: str | None = None,
+        diff_context_service: GitDiffContextService | None = None,
+        llm_planner: LlmVerificationPlanner | None = None,
+    ) -> None:
+        self._mode = mode or os.getenv("PROOFMODE_PLANNER_MODE", "deterministic")
+        self._diff_context_service = diff_context_service or GitDiffContextService()
+        self._llm_planner = llm_planner or LlmVerificationPlanner()
+
     def create_checklist(self, run: ProofRun) -> VerificationChecklist:
+        if self._mode == "llm":
+            return self._create_llm_checklist(run)
+        return self._create_deterministic_checklist(run)
+
+    def _create_llm_checklist(self, run: ProofRun) -> VerificationChecklist:
+        diff_context = self._diff_context_service.build(run.repo_path)
+        llm_result = self._llm_planner.create_checklist(run.claim, diff_context)
+        if llm_result.checklist is not None:
+            return self._ensure_diff_check(llm_result.checklist, run)
+
+        fallback = self._create_deterministic_checklist(run)
+        fallback.planner.mode = "llm"
+        fallback.planner.source = "deterministic_fallback"
+        fallback.planner.provider = llm_result.metadata.provider
+        fallback.planner.model = llm_result.metadata.model
+        fallback.planner.used_fallback = True
+        fallback.planner.reason = llm_result.metadata.reason or "llm_planner_failed"
+        fallback.planner.diff_files_used = llm_result.metadata.diff_files_used
+        fallback.planner.diff_truncated = llm_result.metadata.diff_truncated
+        return fallback
+
+    def _create_deterministic_checklist(self, run: ProofRun) -> VerificationChecklist:
         checks: list[PlannedCheck] = [
             PlannedCheck(
                 layer="diff",
@@ -71,6 +108,21 @@ class VerificationPlanner:
             checks=checks,
             affected_files_hint=self._affected_files_hint(run),
         )
+
+    def _ensure_diff_check(self, checklist: VerificationChecklist, run: ProofRun) -> VerificationChecklist:
+        if any(check.layer == "diff" for check in checklist.checks):
+            return checklist
+
+        checklist.checks.insert(
+            0,
+            PlannedCheck(
+                layer="diff",
+                type="changed_files_detected",
+                description="Inspect changed files to ground the generated verification checklist.",
+                target=run.repo_path,
+            ),
+        )
+        return checklist
 
     def from_changed_files(self, changed_files: list[str]) -> list[str]:
         return recommended_layers(summarize_categories(changed_files))

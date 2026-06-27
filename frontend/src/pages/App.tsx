@@ -1,9 +1,11 @@
-import { ShieldCheck, Sparkles } from "lucide-react";
+import { Database, KeyRound, Search, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { RunCard } from "../components/RunCard";
 import { RunDetail } from "../components/RunDetail";
-import { createRun, listRuns, seedDemoRuns } from "../services/proofmodeApi";
+import { createRun, getSettingsStatus, listRuns, seedDemoRuns } from "../services/proofmodeApi";
 import type { ProofRun, ProofRunCreate } from "../types/runs";
+import type { SettingsStatus } from "../types/settings";
 
 export function App() {
   const [claim, setClaim] = useState("I added the first ProofMode verification loop");
@@ -15,6 +17,9 @@ export function App() {
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSeedingDemo, setIsSeedingDemo] = useState(false);
+  const [runSearch, setRunSearch] = useState("");
+  const [showAllRuns, setShowAllRuns] = useState(false);
+  const [settingsStatus, setSettingsStatus] = useState<SettingsStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,9 +29,16 @@ export function App() {
         setSelectedRunId((current) => current ?? loadedRuns[0]?.id ?? null);
       })
       .catch(() => setError("Backend is not reachable yet."));
+
+    getSettingsStatus()
+      .then(setSettingsStatus)
+      .catch(() => setSettingsStatus(null));
   }, []);
 
   const selectedRun = runs.find((run) => run.id === selectedRunId) ?? runs[0] ?? null;
+  const filteredRuns = filterRuns(runs, runSearch);
+  const visibleRuns = showAllRuns ? filteredRuns : filteredRuns.slice(0, 4);
+  const hiddenRunCount = filteredRuns.length - visibleRuns.length;
   const runCounts = {
     passed: runs.filter((run) => run.status === "passed").length,
     failed: runs.filter((run) => run.status === "failed").length,
@@ -49,6 +61,7 @@ export function App() {
       const run = await createRun(payload);
       setRuns((currentRuns) => [run, ...currentRuns]);
       setSelectedRunId(run.id);
+      setShowAllRuns(false);
     } catch {
       setError("ProofMode could not create a run.");
     } finally {
@@ -65,6 +78,7 @@ export function App() {
       const loadedRuns = await listRuns();
       setRuns(loadedRuns);
       setSelectedRunId(demoRuns[0]?.id ?? loadedRuns[0]?.id ?? null);
+      setShowAllRuns(false);
     } catch {
       setError("ProofMode could not seed demo runs.");
     } finally {
@@ -88,6 +102,8 @@ export function App() {
           <Metric label="Uncertain" value={runCounts.uncertain} tone="uncertain" />
         </div>
       </section>
+
+      <SettingsStatusPanel status={settingsStatus} />
 
       <section className="claim-panel">
         <div className="panel-heading">
@@ -158,23 +174,56 @@ export function App() {
 
       <section className="workspace-grid">
         <section className="runs-section">
-          <div className="section-heading">
-            <p className="eyebrow">Reports</p>
-            <h2>Verification Runs</h2>
+          <div className="section-heading runs-heading">
+            <div>
+              <p className="eyebrow">Reports</p>
+              <h2>Verification Runs</h2>
+            </div>
+            <label className="run-search" htmlFor="run-search">
+              <Search size={15} />
+              <input
+                id="run-search"
+                onChange={(event) => {
+                  setRunSearch(event.target.value);
+                  setShowAllRuns(false);
+                }}
+                placeholder="Search runs"
+                value={runSearch}
+              />
+            </label>
           </div>
           {runs.length === 0 ? (
             <div className="empty-state">No proof runs yet.</div>
+          ) : filteredRuns.length === 0 ? (
+            <div className="empty-state">No runs match your search.</div>
           ) : (
-            <div className="runs-list">
-              {runs.map((run) => (
-                <RunCard
-                  isSelected={run.id === selectedRun?.id}
-                  key={run.id}
-                  onSelect={() => setSelectedRunId(run.id)}
-                  run={run}
-                />
-              ))}
-            </div>
+            <>
+              <div className="runs-list">
+                {visibleRuns.map((run) => (
+                  <RunCard
+                    isSelected={run.id === selectedRun?.id}
+                    key={run.id}
+                    onSelect={() => setSelectedRunId(run.id)}
+                    run={run}
+                  />
+                ))}
+              </div>
+              <div className="runs-list-footer">
+                <span>
+                  Showing {visibleRuns.length} of {filteredRuns.length}
+                  {runSearch.trim() ? " matching" : ""} run{filteredRuns.length === 1 ? "" : "s"}
+                </span>
+                {filteredRuns.length > 4 ? (
+                  <button
+                    className="show-more-button"
+                    onClick={() => setShowAllRuns((current) => !current)}
+                    type="button"
+                  >
+                    {showAllRuns ? "Show Less" : `Show ${hiddenRunCount} More`}
+                  </button>
+                ) : null}
+              </div>
+            </>
           )}
         </section>
 
@@ -189,6 +238,65 @@ export function App() {
         />
       </section>
     </main>
+  );
+}
+
+function SettingsStatusPanel({ status }: { status: SettingsStatus | null }) {
+  const backendOnline = status?.backend_status === "online";
+
+  return (
+    <section className="settings-status-panel" aria-label="Environment status">
+      <StatusChip
+        icon={<Server size={15} />}
+        label="Backend"
+        tone={backendOnline ? "passed" : "failed"}
+        value={backendOnline ? "Online" : "Unknown"}
+      />
+      <StatusChip
+        icon={<Settings2 size={15} />}
+        label="Planner"
+        tone={status?.planner_mode === "llm" ? "passed" : "neutral"}
+        value={status?.planner_mode ?? "unknown"}
+      />
+      <StatusChip
+        icon={<Sparkles size={15} />}
+        label="Provider"
+        tone={status?.llm_provider === "openai" ? "passed" : "neutral"}
+        value={status?.llm_provider ?? "unknown"}
+      />
+      <StatusChip
+        icon={<KeyRound size={15} />}
+        label="API key"
+        tone={status?.openai_api_key_configured ? "passed" : "uncertain"}
+        value={status?.openai_api_key_configured ? "Configured" : "Missing"}
+      />
+      <StatusChip
+        icon={<Database size={15} />}
+        label="Runs"
+        tone={status?.run_persistence_enabled ? "passed" : "failed"}
+        value={status?.run_persistence_enabled ? "Persisted" : "Memory only"}
+      />
+    </section>
+  );
+}
+
+function StatusChip({
+  icon,
+  label,
+  tone,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  tone: "passed" | "failed" | "neutral" | "uncertain";
+  value: string;
+}) {
+  return (
+    <div className={`settings-chip settings-chip--${tone}`}>
+      {icon}
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 
@@ -212,4 +320,27 @@ function Metric({
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function filterRuns(runs: ProofRun[], query: string): ProofRun[] {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return runs;
+  }
+
+  return runs.filter((run) => {
+    const searchable = [
+      run.claim,
+      run.id,
+      run.status,
+      run.approval?.decision,
+      run.checklist.checks.map((check) => `${check.layer} ${check.type} ${check.description}`).join(" "),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return searchable.includes(normalizedQuery);
+  });
 }

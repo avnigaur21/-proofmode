@@ -122,6 +122,14 @@ OPENAI_API_KEY=...
 If provider output is invalid or unavailable, ProofMode falls back to the deterministic checklist and records that fallback in the run timeline.
 The dashboard also shows a Planner Explainability panel for each run, including provider, model, diff files read, truncation, fallback status, and influenced files.
 
+Runtime status:
+
+```bash
+curl http://localhost:8000/settings/status
+```
+
+The dashboard shows this as compact status chips for backend connectivity, planner mode, LLM provider, API key presence, and run persistence.
+
 ## MVP Roadmap
 
 - Checkpoint 1: Project skeleton and proof report contract

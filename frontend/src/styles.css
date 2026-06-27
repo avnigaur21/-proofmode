@@ -35,8 +35,9 @@
 body {
   min-width: 1024px;
   margin: 0;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-x: auto;
+  overflow-y: auto;
   background: var(--bg-app);
   color: var(--text-primary);
 }
@@ -108,10 +109,10 @@ h1, h2, h3, h4, p { margin-top: 0; }
 .app-shell {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   width: min(1600px, 100%);
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: 20px 24px 32px;
 }
 
 .topbar {
@@ -187,6 +188,82 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
 .metric--passed strong { color: var(--color-passed); }
 .metric--failed strong { color: var(--color-failed); }
 .metric--uncertain strong { color: var(--color-uncertain); }
+
+.settings-status-panel {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.settings-chip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.settings-chip svg {
+  grid-row: span 2;
+  color: var(--text-muted);
+}
+
+.settings-chip span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.settings-chip strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.settings-chip--passed {
+  background: var(--bg-passed);
+  border-color: rgba(5, 150, 105, 0.2);
+}
+
+.settings-chip--passed svg,
+.settings-chip--passed strong {
+  color: var(--color-passed);
+}
+
+.settings-chip--failed {
+  background: var(--bg-failed);
+  border-color: rgba(220, 38, 38, 0.2);
+}
+
+.settings-chip--failed svg,
+.settings-chip--failed strong {
+  color: var(--color-failed);
+}
+
+.settings-chip--uncertain {
+  background: var(--bg-uncertain);
+  border-color: rgba(217, 119, 6, 0.2);
+}
+
+.settings-chip--uncertain svg,
+.settings-chip--uncertain strong {
+  color: var(--color-uncertain);
+}
 
 /* 
   ========================================
@@ -273,11 +350,10 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   ========================================
 */
 .workspace-grid {
-  flex: 1;
-  min-height: 0;
   display: grid;
   grid-template-columns: 400px minmax(0, 1fr);
   gap: 20px;
+  align-items: start;
 }
 
 .runs-section {
@@ -291,11 +367,71 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
 }
 
 .runs-list {
-  flex: 1;
-  overflow-y: auto;
   display: grid;
   gap: 12px;
-  padding-right: 8px;
+}
+
+.runs-heading {
+  align-items: center;
+  gap: 12px;
+}
+
+.run-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(190px, 48%);
+  min-height: 38px;
+  padding: 0 10px;
+  margin: 0;
+  color: var(--text-muted);
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+}
+
+.run-search input {
+  min-width: 0;
+  min-height: 0;
+  height: 34px;
+  padding: 0;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.run-search input:focus {
+  box-shadow: none;
+}
+
+.runs-list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.show-more-button {
+  min-height: 36px;
+  padding: 0 14px;
+  color: var(--primary-accent);
+  font-size: 0.82rem;
+  background: #e0f2fe;
+  border: 1px solid rgba(2, 132, 199, 0.2);
+  box-shadow: none;
+}
+
+.show-more-button:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--primary-accent);
+  border-color: var(--primary-accent);
 }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: rgba(0,0,0,0.03); border-radius: 4px; }
@@ -306,7 +442,7 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   display: flex;
   flex-direction: column;
   padding: 24px;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 /* 

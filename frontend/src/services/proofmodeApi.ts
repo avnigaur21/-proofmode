@@ -1,4 +1,5 @@
 import type { ApprovalCreate, ProofRun, ProofRunCreate } from "../types/runs";
+import type { SettingsStatus } from "../types/settings";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -35,6 +36,16 @@ export async function listRuns(): Promise<ProofRun[]> {
 
   if (!response.ok) {
     throw new Error("Unable to load ProofMode runs");
+  }
+
+  return response.json();
+}
+
+export async function getSettingsStatus(): Promise<SettingsStatus> {
+  const response = await fetch(`${API_BASE_URL}/settings/status`);
+
+  if (!response.ok) {
+    throw new Error("Unable to load ProofMode settings status");
   }
 
   return response.json();

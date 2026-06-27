@@ -41,6 +41,19 @@ def test_artifact_routes_reject_path_traversal() -> None:
     assert response.status_code == 404
 
 
+def test_settings_status_exposes_runtime_configuration() -> None:
+    response = client.get("/settings/status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["backend_status"] == "online"
+    assert body["planner_mode"] in {"deterministic", "llm"}
+    assert body["llm_provider"] in {"heuristic", "openai"}
+    assert isinstance(body["openai_api_key_configured"], bool)
+    assert body["run_persistence_enabled"] is True
+    assert body["runs_directory"].endswith("runs")
+
+
 def test_approval_gate_persists_human_decision() -> None:
     run_response = client.post("/runs", json={"claim": "Review approval gate"})
     assert run_response.status_code == 200

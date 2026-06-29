@@ -58,6 +58,7 @@ class VerificationPlanner:
                         type="page_loads",
                         description="Open the target page and confirm the browser can load it.",
                         target=run.target_url,
+                        assertions={"url_contains": self._url_path_hint(run.target_url)},
                     ),
                     PlannedCheck(
                         layer="ui",
@@ -75,6 +76,7 @@ class VerificationPlanner:
                     type="api_health_reachable",
                     description="Call the API base URL and confirm it responds before contract checks run.",
                     target=run.api_base_url,
+                    assertions={"method": "GET", "path": run.api_base_url, "expected_status": 200},
                 )
             )
 
@@ -86,12 +88,14 @@ class VerificationPlanner:
                         type="schema_snapshot",
                         description="Snapshot table names, columns, column types, and schema hashes.",
                         target=self._mask_db_url(run.target_db_url),
+                        assertions={},
                     ),
                     PlannedCheck(
                         layer="db",
                         type="row_count_snapshot",
                         description="Track row counts to detect insertions, deletions, and unexpected state changes.",
                         target=self._mask_db_url(run.target_db_url),
+                        assertions={},
                     ),
                 ]
             )
@@ -147,3 +151,8 @@ class VerificationPlanner:
         scheme, rest = db_url.split("://", 1) if "://" in db_url else ("", db_url)
         location = rest.split("@", 1)[1]
         return f"{scheme}://***@{location}" if scheme else f"***@{location}"
+
+    def _url_path_hint(self, url: str) -> str:
+        if "://" not in url:
+            return url
+        return "/" + url.split("://", 1)[1].split("/", 1)[1] if "/" in url.split("://", 1)[1] else ""

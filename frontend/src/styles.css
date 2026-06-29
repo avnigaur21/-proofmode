@@ -884,6 +884,26 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
 .checklist-item p, .evidence-summary, .muted-text { margin: 0; color: var(--text-secondary); line-height: 1.5; font-size: 0.9rem; }
 .evidence-summary { margin-bottom: 16px; }
 
+.assertion-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.assertion-summary code {
+  max-width: 100%;
+  padding: 3px 7px;
+  overflow: hidden;
+  color: var(--primary-accent);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #e0f2fe;
+  border: 1px solid rgba(2, 132, 199, 0.18);
+  border-radius: 999px;
+}
+
 /* Screenshots */
 .screenshot-frame {
   margin: 16px 0;

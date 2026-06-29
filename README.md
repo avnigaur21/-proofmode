@@ -130,6 +130,14 @@ curl http://localhost:8000/settings/status
 
 The dashboard shows this as compact status chips for backend connectivity, planner mode, LLM provider, API key presence, and run persistence.
 
+Targeted check assertions:
+
+Planned checks may include an `assertions` object. Verifiers use this to run more specific checks:
+
+- API: `method`, `path`, `expected_status`, `required_fields`
+- UI: `text`, `selector`, `visible`, `url_contains`
+- DB: `table`, `column`, `expected_row_delta`
+
 ## MVP Roadmap
 
 - Checkpoint 1: Project skeleton and proof report contract

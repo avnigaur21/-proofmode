@@ -137,6 +137,7 @@ export function RunDetail({
               <div>
                 <strong>{check.type}</strong>
                 <p>{check.description}</p>
+                <AssertionSummary assertions={check.assertions} />
               </div>
             </div>
           ))}
@@ -163,6 +164,30 @@ export function RunDetail({
         )}
       </section>
     </section>
+  );
+}
+
+function AssertionSummary({ assertions }: { assertions?: Record<string, unknown> }) {
+  if (!assertions || Object.keys(assertions).length === 0) {
+    return null;
+  }
+
+  const visibleAssertions = Object.entries(assertions)
+    .filter(([, value]) => value !== null && value !== undefined && value !== "")
+    .slice(0, 4);
+
+  if (visibleAssertions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="assertion-summary">
+      {visibleAssertions.map(([key, value]) => (
+        <code key={key}>
+          {key}: {formatAssertionValue(value)}
+        </code>
+      ))}
+    </div>
   );
 }
 
@@ -632,4 +657,16 @@ function fallbackReason(reason: string): string {
   };
 
   return reasons[reason] ?? reason;
+}
+
+function formatAssertionValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+
+  if (typeof value === "object" && value !== null) {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
 }

@@ -38,6 +38,7 @@ class HeuristicLlmPlannerProvider:
                         "type": "diff_targeted_ui_behavior",
                         "description": f"Verify the UI behavior affected by {changed_file.path} still renders and responds without browser errors.",
                         "target": changed_file.path,
+                        "assertions": {},
                     }
                 )
 
@@ -49,6 +50,11 @@ class HeuristicLlmPlannerProvider:
                         "type": "diff_targeted_api_contract",
                         "description": f"Verify {endpoint_hint} still returns the expected status and response shape after changes in {changed_file.path}.",
                         "target": endpoint_hint,
+                        "assertions": {
+                            "method": "GET",
+                            "path": self._path_hint(endpoint_hint),
+                            "expected_status": 200,
+                        },
                     }
                 )
 
@@ -59,6 +65,7 @@ class HeuristicLlmPlannerProvider:
                         "type": "diff_targeted_data_state",
                         "description": f"Verify schema and row-count expectations for the data changes in {changed_file.path}.",
                         "target": changed_file.path,
+                        "assertions": self._db_assertions(changed_file.path),
                     }
                 )
 
@@ -69,6 +76,7 @@ class HeuristicLlmPlannerProvider:
                         "type": "shared_logic_regression",
                         "description": f"Exercise API paths that depend on shared logic changed in {changed_file.path}.",
                         "target": changed_file.path,
+                        "assertions": {},
                     }
                 )
 
@@ -79,6 +87,7 @@ class HeuristicLlmPlannerProvider:
                     "type": "manual_diff_review",
                     "description": "Review the changed files because no specific UI, API, or DB layer was confidently inferred.",
                     "target": None,
+                    "assertions": {},
                 }
             )
 
@@ -95,6 +104,23 @@ class HeuristicLlmPlannerProvider:
         if "project" in path:
             return "project endpoint"
         return "changed API endpoint"
+
+    def _path_hint(self, endpoint_hint: str) -> str:
+        if "authentication" in endpoint_hint:
+            return "/auth/login"
+        if "user/profile" in endpoint_hint:
+            return "/api/user/profile"
+        if "project" in endpoint_hint:
+            return "/api/projects"
+        return ""
+
+    def _db_assertions(self, path: str) -> dict[str, object]:
+        normalized = path.lower()
+        if "user" in normalized:
+            return {"table": "users"}
+        if "project" in normalized:
+            return {"table": "projects"}
+        return {}
 
     def _dedupe_checks(self, checks: list[dict[str, str | None]]) -> list[dict[str, str | None]]:
         seen: set[tuple[str | None, str | None, str | None]] = set()
@@ -159,17 +185,28 @@ class OpenAiPlannerProvider:
                         {
                             "claim": claim,
                             "diff_context": diff_context.model_dump(mode="json") if diff_context else None,
-                            "required_output": {
-                                "checks": [
-                                    {
-                                        "layer": "ui | api | db | diff",
-                                        "type": "short_snake_case_check_type",
-                                        "description": "human-readable verification instruction",
-                                        "target": "specific endpoint, selector, table, file, or null",
-                                    }
-                                ],
-                                "affected_files_hint": ["changed/file/path.py"],
-                            },
+                        "required_output": {
+                            "checks": [
+                                {
+                                    "layer": "ui | api | db | diff",
+                                    "type": "short_snake_case_check_type",
+                                    "description": "human-readable verification instruction",
+                                    "target": "specific endpoint, selector, table, file, or null",
+                                    "assertions": {
+                                        "method": "GET",
+                                        "path": "/health",
+                                        "expected_status": 200,
+                                        "required_fields": ["status"],
+                                        "selector": "[data-testid='submit']",
+                                        "text": "Login",
+                                        "table": "users",
+                                        "column": "email",
+                                        "expected_row_delta": 1,
+                                    },
+                                }
+                            ],
+                            "affected_files_hint": ["changed/file/path.py"],
+                        },
                         },
                         indent=2,
                     ),
@@ -194,8 +231,23 @@ class OpenAiPlannerProvider:
                                         "type": {"type": "string"},
                                         "description": {"type": "string"},
                                         "target": {"type": ["string", "null"]},
+                                        "assertions": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "anyOf": [
+                                                    {"type": "string"},
+                                                    {"type": "number"},
+                                                    {"type": "boolean"},
+                                                    {"type": "null"},
+                                                    {
+                                                        "type": "array",
+                                                        "items": {"type": "string"},
+                                                    },
+                                                ]
+                                            },
+                                        },
                                     },
-                                    "required": ["layer", "type", "description", "target"],
+                                    "required": ["layer", "type", "description", "target", "assertions"],
                                 },
                             },
                             "affected_files_hint": {"type": "array", "items": {"type": "string"}},

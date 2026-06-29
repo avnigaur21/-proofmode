@@ -123,6 +123,20 @@ def test_llm_planner_falls_back_when_provider_output_is_invalid(tmp_path: Path) 
     assert any(check.type == "api_health_reachable" for check in checklist.checks)
 
 
+def test_deterministic_planner_adds_api_assertions() -> None:
+    checklist = VerificationPlanner(mode="deterministic").create_checklist(
+        ProofRun(
+            claim="Verify API health",
+            api_base_url="http://localhost:8000/health",
+        )
+    )
+
+    api_check = next(check for check in checklist.checks if check.layer == "api")
+    assert api_check.assertions["method"] == "GET"
+    assert api_check.assertions["path"] == "http://localhost:8000/health"
+    assert api_check.assertions["expected_status"] == 200
+
+
 def test_llm_planner_falls_back_when_provider_raises(tmp_path: Path) -> None:
     repo_path = _repo_with_auth_change(tmp_path)
     planner = VerificationPlanner(

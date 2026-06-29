@@ -4,7 +4,9 @@ import subprocess
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.schemas.runs import PlannedCheck, ProofRun, VerificationChecklist
 from app.services.run_service import RunService
+from app.verifiers.db_verifier import DbVerifier
 
 
 client = TestClient(app)
@@ -135,6 +137,36 @@ def test_db_snapshot_tracks_sqlite_row_count_changes(tmp_path) -> None:
     assert second_db_check["status"] == "passed"
     assert second_db_check["evidence"]["issues"][0]["type"] == "row_count_changed"
     assert second_db_check["evidence"]["issues"][0]["delta"] == 1
+
+
+def test_db_verifier_reports_targeted_table_and_column_assertions(tmp_path) -> None:
+    db_path = tmp_path / "targeted.db"
+    connection = sqlite3.connect(db_path)
+    connection.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL)")
+    connection.commit()
+    connection.close()
+
+    run = ProofRun(
+        claim="Verify users table",
+        target_db_url=f"sqlite:///{db_path.as_posix()}",
+        checklist=VerificationChecklist(
+            checks=[
+                PlannedCheck(
+                    layer="db",
+                    type="table_column_exists",
+                    description="Verify the users.email column exists.",
+                    target="users",
+                    assertions={"table": "users", "column": "email"},
+                )
+            ]
+        ),
+    )
+
+    check = DbVerifier().verify(run)
+
+    assert check.status == "uncertain"
+    assert check.evidence["target_results"][0]["table_exists"] is True
+    assert check.evidence["target_results"][0]["column_exists"] is True
 
 
 def test_diff_verifier_classifies_changed_files(tmp_path) -> None:

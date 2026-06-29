@@ -16,6 +16,7 @@ export type PlannedCheck = {
   type: string;
   description: string;
   target?: string | null;
+  assertions?: Record<string, unknown>;
 };
 
 export type VerificationChecklist = {

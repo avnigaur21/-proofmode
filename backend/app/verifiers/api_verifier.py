@@ -3,10 +3,11 @@ import json
 import re
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.parse import urljoin
 
 import httpx
 
-from app.schemas.runs import CheckStatus, ProofCheck, ProofRun
+from app.schemas.runs import CheckStatus, PlannedCheck, ProofCheck, ProofRun
 from app.services.artifacts import artifact_root, artifact_url
 
 
@@ -20,6 +21,10 @@ class ApiVerifier:
                 status=CheckStatus.UNCERTAIN,
                 summary="No API base URL was provided, so API contracts were not checked.",
             )
+
+        targeted_checks = self._targeted_checks(run)
+        if targeted_checks:
+            return self._verify_targets(run, targeted_checks)
 
         snapshot_dir = artifact_root() / "snapshots" / "api"
         snapshot_dir.mkdir(parents=True, exist_ok=True)
@@ -80,6 +85,119 @@ class ApiVerifier:
                 "status_code": current_snapshot["status_code"],
             },
         )
+
+    def _verify_targets(self, run: ProofRun, checks: list[PlannedCheck]) -> ProofCheck:
+        assert run.api_base_url is not None
+        results: list[dict[str, object]] = []
+        issues: list[dict[str, object]] = []
+
+        with httpx.Client(timeout=10.0, follow_redirects=True) as client:
+            for check in checks:
+                assertions = check.assertions
+                method = str(assertions.get("method", "GET")).upper()
+                path = str(assertions.get("path") or check.target or "")
+                url = self._target_url(run.api_base_url, path)
+                expected_status = int(assertions.get("expected_status", 200))
+                required_fields = [
+                    str(field) for field in assertions.get("required_fields", []) if field
+                ]
+
+                try:
+                    response = client.request(method, url)
+                    body = response.json() if "application/json" in response.headers.get("content-type", "") else None
+                except Exception as error:
+                    issues.append(
+                        {
+                            "type": "target_request_failed",
+                            "target": url,
+                            "method": method,
+                            "error": str(error),
+                            "severity": "high",
+                        }
+                    )
+                    continue
+
+                target_result = {
+                    "type": check.type,
+                    "method": method,
+                    "url": url,
+                    "status_code": response.status_code,
+                    "expected_status": expected_status,
+                    "required_fields": required_fields,
+                }
+                results.append(target_result)
+
+                if response.status_code != expected_status:
+                    issues.append(
+                        {
+                            "type": "target_status_mismatch",
+                            "target": url,
+                            "method": method,
+                            "expected": expected_status,
+                            "actual": response.status_code,
+                            "severity": "high",
+                        }
+                    )
+
+                if required_fields:
+                    missing_fields = self._missing_required_fields(body, required_fields)
+                    for field in missing_fields:
+                        issues.append(
+                            {
+                                "type": "required_field_missing",
+                                "target": url,
+                                "field": field,
+                                "severity": "high",
+                            }
+                        )
+
+        if issues:
+            return ProofCheck(
+                layer=self.layer,
+                status=CheckStatus.FAILED,
+                summary=f"Targeted API verification found {len(issues)} issue(s).",
+                evidence={"api_base_url": run.api_base_url, "target_results": results, "issues": issues},
+            )
+
+        return ProofCheck(
+            layer=self.layer,
+            status=CheckStatus.PASSED,
+            summary=f"Targeted API verification passed for {len(results)} endpoint check(s).",
+            evidence={"api_base_url": run.api_base_url, "target_results": results, "issues": []},
+        )
+
+    def _targeted_checks(self, run: ProofRun) -> list[PlannedCheck]:
+        return [
+            check
+            for check in run.checklist.checks
+            if check.layer == self.layer
+            and (
+                check.assertions.get("path")
+                or check.assertions.get("expected_status")
+                or check.assertions.get("required_fields")
+            )
+        ]
+
+    def _target_url(self, api_base_url: str, path: str) -> str:
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        if not path:
+            return api_base_url
+        return urljoin(api_base_url.rstrip("/") + "/", path.lstrip("/"))
+
+    def _missing_required_fields(self, body: object, required_fields: list[str]) -> list[str]:
+        if body is None:
+            return required_fields
+        return [field for field in required_fields if not self._has_path(body, field)]
+
+    def _has_path(self, value: object, path: str) -> bool:
+        current = value
+        for part in path.split("."):
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+                continue
+            return False
+        return True
 
     def _capture_snapshot(self, api_base_url: str) -> dict:
         with httpx.Client(timeout=10.0, follow_redirects=True) as client:

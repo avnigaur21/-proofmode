@@ -36,6 +36,7 @@ class PlannedCheck(BaseModel):
     type: str
     description: str
     target: str | None = None
+    assertions: dict[str, Any] = Field(default_factory=dict)
 
 
 class PlannerMetadata(BaseModel):

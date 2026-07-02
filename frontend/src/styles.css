@@ -362,14 +362,18 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
 
 .run-config-panel {
   display: grid;
-  grid-template-columns: minmax(180px, 0.24fr) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(180px, 0.22fr) minmax(0, 1fr);
+  gap: 12px 16px;
   align-items: center;
   padding: 14px;
   margin-bottom: 16px;
   background: #f8fafc;
   border: 1px solid var(--border-color);
   border-radius: 10px;
+}
+
+.run-config-copy {
+  grid-row: span 2;
 }
 
 .config-label {
@@ -384,6 +388,58 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   color: var(--text-muted);
   font-size: 0.78rem;
   line-height: 1.35;
+}
+
+.run-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.run-preset-button {
+  display: grid;
+  gap: 3px;
+  min-height: 50px;
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.run-preset-button:hover:not(:disabled) {
+  color: var(--primary-accent);
+  background: #f0f9ff;
+  border-color: rgba(2, 132, 199, 0.25);
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.08);
+  transform: translateY(-1px);
+}
+
+.run-preset-button strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.82rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-preset-button span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-preset-button--active {
+  color: var(--primary-accent);
+  background: #e0f2fe;
+  border-color: rgba(2, 132, 199, 0.45);
+  box-shadow: 0 0 0 1px rgba(2, 132, 199, 0.1);
 }
 
 .run-config-grid {

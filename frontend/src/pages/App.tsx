@@ -75,6 +75,7 @@ export function App() {
     targetUrl,
   });
   const canSubmitRun = claim.trim().length > 0 && runValidationIssues.length === 0;
+  const activePresetId = getActivePresetId(runConfig);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -180,6 +181,11 @@ export function App() {
     setRunConfig(project.default_run_config);
   }
 
+  function applyRunPreset(preset: RunPreset) {
+    setRunConfig(preset.config);
+    setError(null);
+  }
+
   return (
     <main className="app-shell">
       <section className="topbar">
@@ -264,9 +270,22 @@ export function App() {
             </button>
           </div>
           <section className="run-config-panel" aria-label="Proof run configuration">
-            <div>
+            <div className="run-config-copy">
               <p className="config-label">Proof checks</p>
               <p className="config-hint">Choose what ProofMode should execute for this run.</p>
+            </div>
+            <div className="run-preset-grid" aria-label="Run presets">
+              {runPresets.map((preset) => (
+                <button
+                  className={`run-preset-button ${activePresetId === preset.id ? "run-preset-button--active" : ""}`}
+                  key={preset.id}
+                  onClick={() => applyRunPreset(preset)}
+                  type="button"
+                >
+                  <strong>{preset.label}</strong>
+                  <span>{preset.description}</span>
+                </button>
+              ))}
             </div>
             <div className="run-config-grid">
               <ConfigToggle
@@ -421,6 +440,13 @@ type RunValidationIssue = {
   message: string;
 };
 
+type RunPreset = {
+  id: string;
+  label: string;
+  description: string;
+  config: RunConfiguration;
+};
+
 const defaultRunConfig: RunConfiguration = {
   ui_enabled: true,
   api_enabled: true,
@@ -429,6 +455,67 @@ const defaultRunConfig: RunConfiguration = {
   planner_enabled: true,
   approval_required: true,
 };
+
+const runPresets: RunPreset[] = [
+  {
+    id: "full",
+    label: "Full",
+    description: "UI, API, DB, diff",
+    config: defaultRunConfig,
+  },
+  {
+    id: "ui",
+    label: "UI only",
+    description: "Browser proof",
+    config: {
+      ui_enabled: true,
+      api_enabled: false,
+      db_enabled: false,
+      diff_enabled: false,
+      planner_enabled: true,
+      approval_required: true,
+    },
+  },
+  {
+    id: "backend",
+    label: "Backend/API",
+    description: "API plus diff",
+    config: {
+      ui_enabled: false,
+      api_enabled: true,
+      db_enabled: false,
+      diff_enabled: true,
+      planner_enabled: true,
+      approval_required: true,
+    },
+  },
+  {
+    id: "migration",
+    label: "DB migration",
+    description: "DB plus diff",
+    config: {
+      ui_enabled: false,
+      api_enabled: false,
+      db_enabled: true,
+      diff_enabled: true,
+      planner_enabled: true,
+      approval_required: true,
+    },
+  },
+  {
+    id: "diff",
+    label: "Git diff",
+    description: "Static review",
+    config: {
+      ui_enabled: false,
+      api_enabled: false,
+      db_enabled: false,
+      diff_enabled: true,
+      planner_enabled: true,
+      approval_required: true,
+    },
+  },
+];
 
 function ValidationSummary({ issues }: { issues: RunValidationIssue[] }) {
   if (issues.length === 0) {
@@ -620,6 +707,21 @@ function getRunValidationIssues({
 
 function fieldNeedsAttention(issues: RunValidationIssue[], field: RunValidationIssue["field"]): boolean {
   return issues.some((issue) => issue.field === field);
+}
+
+function getActivePresetId(config: RunConfiguration): string | null {
+  return runPresets.find((preset) => configsMatch(preset.config, config))?.id ?? null;
+}
+
+function configsMatch(first: RunConfiguration, second: RunConfiguration): boolean {
+  return (
+    first.ui_enabled === second.ui_enabled &&
+    first.api_enabled === second.api_enabled &&
+    first.db_enabled === second.db_enabled &&
+    first.diff_enabled === second.diff_enabled &&
+    first.planner_enabled === second.planner_enabled &&
+    first.approval_required === second.approval_required
+  );
 }
 
 function upsertProject(projects: ProjectProfile[], project: ProjectProfile): ProjectProfile[] {

@@ -1,4 +1,4 @@
-import { Database, GitBranch, Globe2, KeyRound, MonitorCheck, Save, Search, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, Database, GitBranch, Globe2, KeyRound, MonitorCheck, Save, Search, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { RunCard } from "../components/RunCard";
@@ -67,11 +67,25 @@ export function App() {
     failed: runs.filter((run) => run.status === "failed").length,
     uncertain: runs.filter((run) => run.status === "uncertain").length,
   };
+  const runValidationIssues = getRunValidationIssues({
+    apiBaseUrl,
+    repoPath,
+    runConfig,
+    targetDbUrl,
+    targetUrl,
+  });
+  const canSubmitRun = claim.trim().length > 0 && runValidationIssues.length === 0;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsSubmitting(true);
     setError(null);
+
+    if (runValidationIssues.length > 0) {
+      setError("Resolve the highlighted run setup issues before verification.");
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       const payload: ProofRunCreate = {
@@ -245,7 +259,7 @@ export function App() {
               onChange={(event) => setClaim(event.target.value)}
               placeholder="Describe what the agent claims is done"
             />
-            <button disabled={isSubmitting || claim.trim().length === 0} type="submit">
+            <button disabled={isSubmitting || !canSubmitRun} type="submit">
               Verify
             </button>
           </div>
@@ -293,8 +307,9 @@ export function App() {
               />
             </div>
           </section>
+          <ValidationSummary issues={runValidationIssues} />
           <div className="advanced-fields">
-            <label>
+            <label className={fieldNeedsAttention(runValidationIssues, "targetUrl") ? "field-warning" : ""}>
               Target URL
               <input
                 onChange={(event) => setTargetUrl(event.target.value)}
@@ -302,7 +317,7 @@ export function App() {
                 value={targetUrl}
               />
             </label>
-            <label>
+            <label className={fieldNeedsAttention(runValidationIssues, "apiBaseUrl") ? "field-warning" : ""}>
               API URL
               <input
                 onChange={(event) => setApiBaseUrl(event.target.value)}
@@ -310,7 +325,7 @@ export function App() {
                 value={apiBaseUrl}
               />
             </label>
-            <label>
+            <label className={fieldNeedsAttention(runValidationIssues, "repoPath") ? "field-warning" : ""}>
               Repo Path
               <input
                 onChange={(event) => setRepoPath(event.target.value)}
@@ -318,7 +333,7 @@ export function App() {
                 value={repoPath}
               />
             </label>
-            <label>
+            <label className={fieldNeedsAttention(runValidationIssues, "targetDbUrl") ? "field-warning" : ""}>
               DB URL
               <input
                 onChange={(event) => setTargetDbUrl(event.target.value)}
@@ -400,6 +415,12 @@ export function App() {
   );
 }
 
+type RunValidationIssue = {
+  field: "targetUrl" | "apiBaseUrl" | "repoPath" | "targetDbUrl" | "runConfig";
+  layer: string;
+  message: string;
+};
+
 const defaultRunConfig: RunConfiguration = {
   ui_enabled: true,
   api_enabled: true,
@@ -408,6 +429,26 @@ const defaultRunConfig: RunConfiguration = {
   planner_enabled: true,
   approval_required: true,
 };
+
+function ValidationSummary({ issues }: { issues: RunValidationIssue[] }) {
+  if (issues.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="validation-summary" aria-live="polite">
+      <div>
+        <AlertTriangle size={17} />
+        <strong>Run setup needs attention</strong>
+      </div>
+      <ul>
+        {issues.map((issue) => (
+          <li key={`${issue.field}-${issue.layer}`}>{issue.message}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function ConfigToggle({
   checked,
@@ -512,6 +553,73 @@ function Metric({
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function getRunValidationIssues({
+  apiBaseUrl,
+  repoPath,
+  runConfig,
+  targetDbUrl,
+  targetUrl,
+}: {
+  apiBaseUrl: string;
+  repoPath: string;
+  runConfig: RunConfiguration;
+  targetDbUrl: string;
+  targetUrl: string;
+}): RunValidationIssue[] {
+  const issues: RunValidationIssue[] = [];
+
+  if (runConfig.ui_enabled && targetUrl.trim().length === 0) {
+    issues.push({
+      field: "targetUrl",
+      layer: "UI",
+      message: "UI verification is enabled, so add a target URL.",
+    });
+  }
+
+  if (runConfig.api_enabled && apiBaseUrl.trim().length === 0) {
+    issues.push({
+      field: "apiBaseUrl",
+      layer: "API",
+      message: "API verification is enabled, so add an API URL.",
+    });
+  }
+
+  if (runConfig.db_enabled && targetDbUrl.trim().length === 0) {
+    issues.push({
+      field: "targetDbUrl",
+      layer: "DB",
+      message: "Database verification is enabled, so add a DB URL.",
+    });
+  }
+
+  if (runConfig.diff_enabled && repoPath.trim().length === 0) {
+    issues.push({
+      field: "repoPath",
+      layer: "Git diff",
+      message: "Git diff analysis is enabled, so add a repo path.",
+    });
+  }
+
+  if (
+    !runConfig.ui_enabled &&
+    !runConfig.api_enabled &&
+    !runConfig.db_enabled &&
+    !runConfig.diff_enabled
+  ) {
+    issues.push({
+      field: "runConfig",
+      layer: "Proof checks",
+      message: "Enable at least one automated proof check before running verification.",
+    });
+  }
+
+  return issues;
+}
+
+function fieldNeedsAttention(issues: RunValidationIssue[], field: RunValidationIssue["field"]): boolean {
+  return issues.some((issue) => issue.field === field);
 }
 
 function upsertProject(projects: ProjectProfile[], project: ProjectProfile): ProjectProfile[] {

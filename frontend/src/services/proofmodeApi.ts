@@ -1,3 +1,4 @@
+import type { ProjectProfile, ProjectProfileCreate, ProjectProfileUpdate } from "../types/projects";
 import type { ApprovalCreate, ProofRun, ProofRunCreate } from "../types/runs";
 import type { SettingsStatus } from "../types/settings";
 
@@ -36,6 +37,51 @@ export async function listRuns(): Promise<ProofRun[]> {
 
   if (!response.ok) {
     throw new Error("Unable to load ProofMode runs");
+  }
+
+  return response.json();
+}
+
+export async function createProject(payload: ProjectProfileCreate): Promise<ProjectProfile> {
+  const response = await fetch(`${API_BASE_URL}/projects`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to create ProofMode project");
+  }
+
+  return response.json();
+}
+
+export async function listProjects(): Promise<ProjectProfile[]> {
+  const response = await fetch(`${API_BASE_URL}/projects`);
+
+  if (!response.ok) {
+    throw new Error("Unable to load ProofMode projects");
+  }
+
+  return response.json();
+}
+
+export async function updateProject(
+  projectId: string,
+  payload: ProjectProfileUpdate
+): Promise<ProjectProfile> {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to update ProofMode project");
   }
 
   return response.json();

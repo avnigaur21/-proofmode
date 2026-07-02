@@ -1,9 +1,18 @@
-import { Database, GitBranch, Globe2, KeyRound, MonitorCheck, Search, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
+import { Database, GitBranch, Globe2, KeyRound, MonitorCheck, Save, Search, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { RunCard } from "../components/RunCard";
 import { RunDetail } from "../components/RunDetail";
-import { createRun, getSettingsStatus, listRuns, seedDemoRuns } from "../services/proofmodeApi";
+import {
+  createProject,
+  createRun,
+  getSettingsStatus,
+  listProjects,
+  listRuns,
+  seedDemoRuns,
+  updateProject,
+} from "../services/proofmodeApi";
+import type { ProjectProfile } from "../types/projects";
 import type { ProofRun, ProofRunCreate, RunConfiguration } from "../types/runs";
 import type { SettingsStatus } from "../types/settings";
 
@@ -14,6 +23,10 @@ export function App() {
   const [repoPath, setRepoPath] = useState("");
   const [targetDbUrl, setTargetDbUrl] = useState("");
   const [runConfig, setRunConfig] = useState<RunConfiguration>(defaultRunConfig);
+  const [projectName, setProjectName] = useState("ProofMode local");
+  const [projects, setProjects] = useState<ProjectProfile[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [isSavingProject, setIsSavingProject] = useState(false);
   const [runs, setRuns] = useState<ProofRun[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,6 +47,15 @@ export function App() {
     getSettingsStatus()
       .then(setSettingsStatus)
       .catch(() => setSettingsStatus(null));
+
+    listProjects()
+      .then((loadedProjects) => {
+        setProjects(loadedProjects);
+        if (loadedProjects[0]) {
+          applyProject(loadedProjects[0]);
+        }
+      })
+      .catch(() => setProjects([]));
   }, []);
 
   const selectedRun = runs.find((run) => run.id === selectedRunId) ?? runs[0] ?? null;
@@ -88,6 +110,62 @@ export function App() {
     }
   }
 
+  async function handleSaveProject() {
+    const trimmedName = projectName.trim();
+    if (!trimmedName) {
+      setError("Project name is required before saving.");
+      return;
+    }
+
+    setIsSavingProject(true);
+    setError(null);
+
+    const payload = {
+      name: trimmedName,
+      target_url: emptyToNull(targetUrl),
+      api_base_url: emptyToNull(apiBaseUrl),
+      repo_path: emptyToNull(repoPath),
+      target_db_url: emptyToNull(targetDbUrl),
+      default_run_config: runConfig,
+    };
+
+    try {
+      const savedProject = selectedProjectId
+        ? await updateProject(selectedProjectId, payload)
+        : await createProject(payload);
+      setProjects((currentProjects) => upsertProject(currentProjects, savedProject));
+      setSelectedProjectId(savedProject.id);
+      setProjectName(savedProject.name);
+    } catch {
+      setError("ProofMode could not save this project profile.");
+    } finally {
+      setIsSavingProject(false);
+    }
+  }
+
+  function handleProjectSelection(projectId: string) {
+    setSelectedProjectId(projectId);
+
+    if (!projectId) {
+      return;
+    }
+
+    const selectedProject = projects.find((project) => project.id === projectId);
+    if (selectedProject) {
+      applyProject(selectedProject);
+    }
+  }
+
+  function applyProject(project: ProjectProfile) {
+    setSelectedProjectId(project.id);
+    setProjectName(project.name);
+    setTargetUrl(project.target_url ?? "");
+    setApiBaseUrl(project.api_base_url ?? "");
+    setRepoPath(project.repo_path ?? "");
+    setTargetDbUrl(project.target_db_url ?? "");
+    setRunConfig(project.default_run_config);
+  }
+
   return (
     <main className="app-shell">
       <section className="topbar">
@@ -123,6 +201,41 @@ export function App() {
             {isSeedingDemo ? "Seeding" : "Seed Demo Runs"}
           </button>
         </div>
+        <section className="project-profile-panel" aria-label="Project profile">
+          <div className="project-profile-fields">
+            <label>
+              Project
+              <select
+                onChange={(event) => handleProjectSelection(event.target.value)}
+                value={selectedProjectId}
+              >
+                <option value="">New project profile</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Project name
+              <input
+                onChange={(event) => setProjectName(event.target.value)}
+                placeholder="ProofMode local"
+                value={projectName}
+              />
+            </label>
+          </div>
+          <button
+            className="save-project-button"
+            disabled={isSavingProject || projectName.trim().length === 0}
+            onClick={handleSaveProject}
+            type="button"
+          >
+            <Save size={16} />
+            {isSavingProject ? "Saving" : selectedProjectId ? "Update Project" : "Save Project"}
+          </button>
+        </section>
         <form onSubmit={handleSubmit}>
           <label htmlFor="claim">Task completion claim</label>
           <div className="claim-form-row claim-form-row--primary">
@@ -399,6 +512,16 @@ function Metric({
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function upsertProject(projects: ProjectProfile[], project: ProjectProfile): ProjectProfile[] {
+  const existingIndex = projects.findIndex((currentProject) => currentProject.id === project.id);
+
+  if (existingIndex === -1) {
+    return [project, ...projects];
+  }
+
+  return projects.map((currentProject) => (currentProject.id === project.id ? project : currentProject));
 }
 
 function filterRuns(runs: ProofRun[], query: string): ProofRun[] {

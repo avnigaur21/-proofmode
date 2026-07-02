@@ -56,6 +56,57 @@ def test_settings_status_exposes_runtime_configuration() -> None:
     assert body["runs_directory"].endswith("runs")
 
 
+def test_project_profiles_can_be_created_listed_and_updated() -> None:
+    create_response = client.post(
+        "/projects",
+        json={
+            "name": "ProofMode workspace",
+            "repo_path": "C:\\path\\to\\repo",
+            "target_url": "http://localhost:5173",
+            "api_base_url": "http://localhost:8000/health",
+            "target_db_url": "sqlite:///./proofmode-runs/demo.db",
+            "default_run_config": {
+                "ui_enabled": True,
+                "api_enabled": True,
+                "db_enabled": False,
+                "diff_enabled": True,
+                "planner_enabled": True,
+                "approval_required": False,
+            },
+        },
+    )
+
+    assert create_response.status_code == 200
+    project = create_response.json()
+    assert project["name"] == "ProofMode workspace"
+    assert project["default_run_config"]["db_enabled"] is False
+
+    list_response = client.get("/projects")
+    assert list_response.status_code == 200
+    assert any(item["id"] == project["id"] for item in list_response.json())
+
+    update_response = client.patch(
+        f"/projects/{project['id']}",
+        json={
+            "name": "ProofMode saved profile",
+            "default_run_config": {
+                "ui_enabled": False,
+                "api_enabled": True,
+                "db_enabled": True,
+                "diff_enabled": True,
+                "planner_enabled": False,
+                "approval_required": True,
+            },
+        },
+    )
+
+    assert update_response.status_code == 200
+    updated_project = update_response.json()
+    assert updated_project["name"] == "ProofMode saved profile"
+    assert updated_project["default_run_config"]["ui_enabled"] is False
+    assert updated_project["default_run_config"]["planner_enabled"] is False
+
+
 def test_approval_gate_persists_human_decision() -> None:
     run_response = client.post("/runs", json={"claim": "Review approval gate"})
     assert run_response.status_code == 200

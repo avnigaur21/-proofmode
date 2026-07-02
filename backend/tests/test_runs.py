@@ -84,6 +84,35 @@ def test_approval_gate_persists_human_decision() -> None:
     assert reloaded_run.approval.decision == "fix_requested"
 
 
+def test_run_configuration_skips_disabled_layers() -> None:
+    response = client.post(
+        "/runs",
+        json={
+            "claim": "Verify diff only",
+            "target_url": "http://localhost:5173",
+            "api_base_url": "http://localhost:8000/health",
+            "run_config": {
+                "ui_enabled": False,
+                "api_enabled": False,
+                "db_enabled": False,
+                "diff_enabled": True,
+                "planner_enabled": True,
+                "approval_required": False,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["run_config"]["ui_enabled"] is False
+    assert body["run_config"]["diff_enabled"] is True
+    assert body["run_config"]["approval_required"] is False
+    assert [check["layer"] for check in body["checks"]] == ["diff"]
+    assert {check["layer"] for check in body["checklist"]["checks"]} == {"diff"}
+    assert "ui.skipped" in [event["type"] for event in body["timeline"]]
+    assert "api.skipped" in [event["type"] for event in body["timeline"]]
+
+
 def test_demo_seed_creates_walkthrough_runs() -> None:
     response = client.post("/demo/seed")
 

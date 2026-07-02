@@ -10,6 +10,14 @@ class ReportGenerator:
             f"# ProofMode Report: {run.claim}",
             "",
             f"Status: `{run.status}`",
+            "",
+            "## Run Configuration",
+            f"- UI verification: `{self._enabled(run.run_config.ui_enabled)}`",
+            f"- API contract verification: `{self._enabled(run.run_config.api_enabled)}`",
+            f"- Database state verification: `{self._enabled(run.run_config.db_enabled)}`",
+            f"- Git diff analysis: `{self._enabled(run.run_config.diff_enabled)}`",
+            f"- Verification planner: `{self._enabled(run.run_config.planner_enabled)}`",
+            f"- Human approval gate: `{self._enabled(run.run_config.approval_required)}`",
         ]
 
         if run.approval:
@@ -65,6 +73,9 @@ class ReportGenerator:
                 lines.append(f"- `{hint}`")
 
         return "\n".join(lines)
+
+    def _enabled(self, value: bool) -> str:
+        return "enabled" if value else "disabled"
 
     def write_markdown(self, run: ProofRun) -> dict[str, str]:
         report_artifact = self.artifact_for(run)

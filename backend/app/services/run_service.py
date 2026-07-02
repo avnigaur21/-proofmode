@@ -1,4 +1,15 @@
-from app.schemas.runs import ApprovalCreate, ApprovalRecord, ProofCheck, ProofRun, ProofRunCreate, RunStatus
+from app.schemas.runs import (
+    ApprovalCreate,
+    ApprovalRecord,
+    PlannedCheck,
+    PlannerMetadata,
+    ProofCheck,
+    ProofRun,
+    ProofRunCreate,
+    RunStatus,
+    VerificationChecklist,
+    VerificationLayer,
+)
 from app.services.planner import VerificationPlanner
 from app.services.report_generator import ReportGenerator
 from app.services.run_store import RunStore
@@ -16,11 +27,11 @@ class RunService:
         self._planner = VerificationPlanner()
         self._report_generator = ReportGenerator()
         self._timeline = TimelineRecorder()
-        self._verifiers = [
-            UiVerifier(),
-            ApiVerifier(),
-            DbVerifier(),
-            DiffVerifier(),
+        self._verifiers: list[tuple[VerificationLayer, object]] = [
+            ("ui", UiVerifier()),
+            ("api", ApiVerifier()),
+            ("db", DbVerifier()),
+            ("diff", DiffVerifier()),
         ]
 
     def create_run(self, payload: ProofRunCreate) -> ProofRun:
@@ -30,6 +41,7 @@ class RunService:
             target_url=payload.target_url,
             api_base_url=payload.api_base_url,
             target_db_url=payload.target_db_url,
+            run_config=payload.run_config,
             status=RunStatus.RUNNING,
         )
         self._timeline.record(
@@ -43,13 +55,16 @@ class RunService:
                 "has_api_base_url": bool(payload.api_base_url),
                 "has_target_db_url": bool(payload.target_db_url),
                 "has_repo_path": bool(payload.repo_path),
+                "run_config": payload.run_config.model_dump(mode="json"),
             },
         )
 
-        run.checklist = self._planner.create_checklist(run)
+        run.checklist = self._create_checklist(run)
         planner_event_type = "planner.completed"
         if run.checklist.planner.used_fallback:
             planner_event_type = "planner.fallback_used"
+        elif run.checklist.planner.source == "disabled":
+            planner_event_type = "planner.disabled"
         elif run.checklist.planner.source == "llm":
             planner_event_type = "planner.llm_completed"
 
@@ -67,7 +82,18 @@ class RunService:
         )
 
         checks: list[ProofCheck] = []
-        for verifier in self._verifiers:
+        for layer, verifier in self._verifiers:
+            if not self._is_verifier_enabled(layer, run):
+                self._timeline.record(
+                    run,
+                    f"{layer}.skipped",
+                    f"{layer.upper()} verification skipped by run configuration.",
+                    layer=layer,
+                    status="skipped",
+                    metadata={"run_config": run.run_config.model_dump(mode="json")},
+                )
+                continue
+
             check = verifier.verify(run)
             checks.append(check)
             self._timeline.record(
@@ -113,6 +139,73 @@ class RunService:
         self._store.save(run)
         return run
 
+    def _create_checklist(self, run: ProofRun) -> VerificationChecklist:
+        if not run.run_config.planner_enabled:
+            return VerificationChecklist(
+                checks=self._configured_checks(run),
+                affected_files_hint=[],
+                planner=PlannerMetadata(
+                    mode="disabled",
+                    source="disabled",
+                    provider="local",
+                    reason="planner_disabled_by_run_configuration",
+                ),
+            )
+
+        checklist = self._planner.create_checklist(run)
+        checklist.checks = [
+            check for check in checklist.checks if run.run_config.is_layer_enabled(check.layer)
+        ]
+        return checklist
+
+    def _configured_checks(self, run: ProofRun) -> list[PlannedCheck]:
+        checks: list[PlannedCheck] = []
+
+        if run.run_config.diff_enabled:
+            checks.append(
+                PlannedCheck(
+                    layer="diff",
+                    type="changed_files_detected",
+                    description="Inspect changed files because Git diff verification is enabled for this run.",
+                    target=run.repo_path,
+                )
+            )
+
+        if run.run_config.ui_enabled:
+            checks.append(
+                PlannedCheck(
+                    layer="ui",
+                    type="page_loads",
+                    description="Open the configured target URL and capture browser evidence.",
+                    target=run.target_url,
+                )
+            )
+
+        if run.run_config.api_enabled:
+            checks.append(
+                PlannedCheck(
+                    layer="api",
+                    type="api_contract_check",
+                    description="Call the configured API URL and compare contract evidence.",
+                    target=run.api_base_url,
+                )
+            )
+
+        if run.run_config.db_enabled:
+            checks.append(
+                PlannedCheck(
+                    layer="db",
+                    type="data_state_snapshot",
+                    description="Snapshot configured database schema and row counts.",
+                    target=self._mask_db_url(run.target_db_url) if run.target_db_url else None,
+                )
+            )
+
+        return checks
+
+    def _is_verifier_enabled(self, layer: VerificationLayer, run: ProofRun) -> bool:
+        return run.run_config.is_layer_enabled(layer)
+
     def list_runs(self) -> list[ProofRun]:
         return sorted(self._runs.values(), key=lambda run: run.created_at, reverse=True)
 
@@ -155,6 +248,8 @@ class RunService:
         return run
 
     def _calculate_status(self, checks: list[ProofCheck]) -> RunStatus:
+        if not checks:
+            return RunStatus.UNCERTAIN
         if any(check.status == "failed" for check in checks):
             return RunStatus.FAILED
         if any(check.status == "uncertain" for check in checks):
@@ -179,6 +274,14 @@ class RunService:
         if approval.decision == "rejected":
             return f"{reviewer} rejected the proof."
         return f"{reviewer} requested fixes before approval."
+
+    def _mask_db_url(self, db_url: str) -> str:
+        if "@" not in db_url:
+            return db_url
+
+        scheme, rest = db_url.split("://", 1) if "://" in db_url else ("", db_url)
+        location = rest.split("@", 1)[1]
+        return f"{scheme}://***@{location}" if scheme else f"***@{location}"
 
 
 run_service = RunService()

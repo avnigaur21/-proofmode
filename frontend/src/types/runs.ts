@@ -4,6 +4,15 @@ export type ApprovalDecision = "approved" | "rejected" | "fix_requested";
 export type VerificationLayer = "ui" | "api" | "db" | "diff";
 export type TimelineLayer = "run" | "planner" | VerificationLayer | "report";
 
+export type RunConfiguration = {
+  ui_enabled: boolean;
+  api_enabled: boolean;
+  db_enabled: boolean;
+  diff_enabled: boolean;
+  planner_enabled: boolean;
+  approval_required: boolean;
+};
+
 export type ProofCheck = {
   layer: VerificationLayer;
   status: CheckStatus;
@@ -60,6 +69,7 @@ export type ProofRun = {
   target_url?: string | null;
   api_base_url?: string | null;
   target_db_url?: string | null;
+  run_config: RunConfiguration;
   checklist: VerificationChecklist;
   checks: ProofCheck[];
   timeline: TimelineEvent[];
@@ -74,6 +84,7 @@ export type ProofRunCreate = {
   target_url?: string | null;
   api_base_url?: string | null;
   target_db_url?: string | null;
+  run_config?: RunConfiguration;
 };
 
 export type ApprovalCreate = {

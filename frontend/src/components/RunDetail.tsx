@@ -109,16 +109,29 @@ export function RunDetail({
         </span>
       </div>
 
-      <ApprovalGate
-        error={approvalError}
-        isPending={pendingDecision}
-        note={approvalNote}
-        onDecision={handleApproval}
-        onNoteChange={setApprovalNote}
-        onReviewerChange={setReviewer}
-        reviewer={reviewer}
-        run={currentRun}
-      />
+      <RunConfigurationSummary run={currentRun} />
+
+      {currentRun.run_config.approval_required ? (
+        <ApprovalGate
+          error={approvalError}
+          isPending={pendingDecision}
+          note={approvalNote}
+          onDecision={handleApproval}
+          onNoteChange={setApprovalNote}
+          onReviewerChange={setReviewer}
+          reviewer={reviewer}
+          run={currentRun}
+        />
+      ) : (
+        <section className="approval-gate approval-gate--disabled">
+          <div className="section-title-row">
+            <ClipboardCheck size={18} />
+            <h3>Approval Gate</h3>
+            <span className="mini-status mini-status--uncertain">disabled</span>
+          </div>
+          <p className="muted-text">Human approval was not required for this proof run.</p>
+        </section>
+      )}
 
       <PlannerExplainability run={currentRun} />
 
@@ -243,6 +256,29 @@ function PlannerExplainability({ run }: { run: ProofRun }) {
       ) : (
         <p className="muted-text">No specific influenced files were recorded for this checklist.</p>
       )}
+    </section>
+  );
+}
+
+function RunConfigurationSummary({ run }: { run: ProofRun }) {
+  const config = run.run_config;
+  const items: Array<[string, boolean]> = [
+    ["UI", config.ui_enabled],
+    ["API", config.api_enabled],
+    ["DB", config.db_enabled],
+    ["Git diff", config.diff_enabled],
+    ["Planner", config.planner_enabled],
+    ["Approval", config.approval_required],
+  ];
+
+  return (
+    <section className="run-config-summary" aria-label="Run configuration summary">
+      {items.map(([label, enabled]) => (
+        <span className={enabled ? "config-chip config-chip--enabled" : "config-chip"} key={label}>
+          {label}
+          <strong>{enabled ? "on" : "off"}</strong>
+        </span>
+      ))}
     </section>
   );
 }
@@ -623,6 +659,10 @@ function formatDateTime(value: string): string {
 function plannerLabel(planner?: ProofRun["checklist"]["planner"]): string {
   if (!planner) {
     return "Planner: deterministic";
+  }
+
+  if (planner.source === "disabled") {
+    return "Planner: disabled";
   }
 
   if (planner.used_fallback) {

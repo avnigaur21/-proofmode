@@ -56,12 +56,25 @@ class VerificationChecklist(BaseModel):
     planner: PlannerMetadata = Field(default_factory=PlannerMetadata)
 
 
+class RunConfiguration(BaseModel):
+    ui_enabled: bool = True
+    api_enabled: bool = True
+    db_enabled: bool = True
+    diff_enabled: bool = True
+    planner_enabled: bool = True
+    approval_required: bool = True
+
+    def is_layer_enabled(self, layer: VerificationLayer) -> bool:
+        return bool(getattr(self, f"{layer}_enabled"))
+
+
 class ProofRunCreate(BaseModel):
     claim: str = Field(..., min_length=1)
     repo_path: str | None = None
     target_url: str | None = None
     api_base_url: str | None = None
     target_db_url: str | None = None
+    run_config: RunConfiguration = Field(default_factory=RunConfiguration)
 
 
 class ApprovalCreate(BaseModel):
@@ -103,6 +116,7 @@ class ProofRun(BaseModel):
     target_url: str | None = None
     api_base_url: str | None = None
     target_db_url: str | None = None
+    run_config: RunConfiguration = Field(default_factory=RunConfiguration)
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)
     checks: list[ProofCheck] = Field(default_factory=list)
     timeline: list[TimelineEvent] = Field(default_factory=list)

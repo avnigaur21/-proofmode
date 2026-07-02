@@ -1,10 +1,10 @@
-import { Database, KeyRound, Search, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
+import { Database, GitBranch, Globe2, KeyRound, MonitorCheck, Search, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { RunCard } from "../components/RunCard";
 import { RunDetail } from "../components/RunDetail";
 import { createRun, getSettingsStatus, listRuns, seedDemoRuns } from "../services/proofmodeApi";
-import type { ProofRun, ProofRunCreate } from "../types/runs";
+import type { ProofRun, ProofRunCreate, RunConfiguration } from "../types/runs";
 import type { SettingsStatus } from "../types/settings";
 
 export function App() {
@@ -13,6 +13,7 @@ export function App() {
   const [apiBaseUrl, setApiBaseUrl] = useState("http://localhost:8000/health");
   const [repoPath, setRepoPath] = useState("");
   const [targetDbUrl, setTargetDbUrl] = useState("");
+  const [runConfig, setRunConfig] = useState<RunConfiguration>(defaultRunConfig);
   const [runs, setRuns] = useState<ProofRun[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,6 +58,7 @@ export function App() {
         api_base_url: emptyToNull(apiBaseUrl),
         repo_path: emptyToNull(repoPath),
         target_db_url: emptyToNull(targetDbUrl),
+        run_config: runConfig,
       };
       const run = await createRun(payload);
       setRuns((currentRuns) => [run, ...currentRuns]);
@@ -134,6 +136,50 @@ export function App() {
               Verify
             </button>
           </div>
+          <section className="run-config-panel" aria-label="Proof run configuration">
+            <div>
+              <p className="config-label">Proof checks</p>
+              <p className="config-hint">Choose what ProofMode should execute for this run.</p>
+            </div>
+            <div className="run-config-grid">
+              <ConfigToggle
+                checked={runConfig.ui_enabled}
+                icon={<MonitorCheck size={17} />}
+                label="UI"
+                onChange={(checked) => setRunConfig((current) => ({ ...current, ui_enabled: checked }))}
+              />
+              <ConfigToggle
+                checked={runConfig.api_enabled}
+                icon={<Globe2 size={17} />}
+                label="API"
+                onChange={(checked) => setRunConfig((current) => ({ ...current, api_enabled: checked }))}
+              />
+              <ConfigToggle
+                checked={runConfig.db_enabled}
+                icon={<Database size={17} />}
+                label="DB"
+                onChange={(checked) => setRunConfig((current) => ({ ...current, db_enabled: checked }))}
+              />
+              <ConfigToggle
+                checked={runConfig.diff_enabled}
+                icon={<GitBranch size={17} />}
+                label="Git diff"
+                onChange={(checked) => setRunConfig((current) => ({ ...current, diff_enabled: checked }))}
+              />
+              <ConfigToggle
+                checked={runConfig.planner_enabled}
+                icon={<Sparkles size={17} />}
+                label="Planner"
+                onChange={(checked) => setRunConfig((current) => ({ ...current, planner_enabled: checked }))}
+              />
+              <ConfigToggle
+                checked={runConfig.approval_required}
+                icon={<ShieldCheck size={17} />}
+                label="Approval"
+                onChange={(checked) => setRunConfig((current) => ({ ...current, approval_required: checked }))}
+              />
+            </div>
+          </section>
           <div className="advanced-fields">
             <label>
               Target URL
@@ -238,6 +284,39 @@ export function App() {
         />
       </section>
     </main>
+  );
+}
+
+const defaultRunConfig: RunConfiguration = {
+  ui_enabled: true,
+  api_enabled: true,
+  db_enabled: true,
+  diff_enabled: true,
+  planner_enabled: true,
+  approval_required: true,
+};
+
+function ConfigToggle({
+  checked,
+  icon,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  icon: ReactNode;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className={`config-toggle ${checked ? "config-toggle--checked" : ""}`}>
+      <input
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        type="checkbox"
+      />
+      <span className="config-toggle__icon">{icon}</span>
+      <span>{label}</span>
+    </label>
   );
 }
 

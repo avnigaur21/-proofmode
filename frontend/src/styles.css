@@ -967,6 +967,104 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   color: var(--primary-accent);
 }
 
+/* Run Comparison */
+.comparison-panel {
+  padding: 20px;
+  margin-bottom: 24px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.comparison-panel--empty {
+  background: #ffffff;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.comparison-metric {
+  min-width: 0;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.comparison-metric span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.comparison-metric strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.comparison-metric--passed strong { color: var(--color-passed); }
+.comparison-metric--failed strong { color: var(--color-failed); }
+.comparison-metric--uncertain strong,
+.comparison-metric--info strong { color: var(--color-uncertain); }
+
+.comparison-table {
+  display: grid;
+  gap: 8px;
+}
+
+.comparison-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.comparison-row > span {
+  color: var(--primary-accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.comparison-status {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.comparison-status--passed { color: var(--color-passed); }
+.comparison-status--failed { color: var(--color-failed); }
+.comparison-status--uncertain { color: var(--color-uncertain); }
+
+.comparison-row code {
+  justify-self: start;
+  padding: 3px 7px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  background: #f1f5f9;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+}
+
 .approval-record {
   padding: 16px;
   margin-bottom: 16px;

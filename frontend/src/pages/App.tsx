@@ -521,6 +521,7 @@ export function App() {
         </section>
 
         <RunDetail
+          allRuns={runs}
           onRunUpdated={(updatedRun) => {
             setRuns((currentRuns) =>
               currentRuns.map((run) => (run.id === updatedRun.id ? updatedRun : run))

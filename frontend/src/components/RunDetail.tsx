@@ -6,6 +6,7 @@ import {
   Clock3,
   Database,
   FileText,
+  GitCompare,
   GitBranch,
   Globe2,
   Image,
@@ -27,9 +28,11 @@ const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
 };
 
 export function RunDetail({
+  allRuns,
   onRunUpdated,
   run,
 }: {
+  allRuns: ProofRun[];
   onRunUpdated: (run: ProofRun) => void;
   run: ProofRun | null;
 }) {
@@ -58,6 +61,7 @@ export function RunDetail({
     run?.checks.forEach((check) => grouped.set(check.layer, check));
     return grouped;
   }, [run]);
+  const previousRun = useMemo(() => findPreviousRun(allRuns, run), [allRuns, run]);
 
   if (!run) {
     return (
@@ -110,6 +114,8 @@ export function RunDetail({
       </div>
 
       <RunConfigurationSummary run={currentRun} />
+
+      <RunComparison currentRun={currentRun} previousRun={previousRun} />
 
       {currentRun.run_config.approval_required ? (
         <ApprovalGate
@@ -177,6 +183,75 @@ export function RunDetail({
         )}
       </section>
     </section>
+  );
+}
+
+function RunComparison({
+  currentRun,
+  previousRun,
+}: {
+  currentRun: ProofRun;
+  previousRun: ProofRun | null;
+}) {
+  if (!previousRun) {
+    return (
+      <section className="comparison-panel comparison-panel--empty">
+        <div className="section-title-row">
+          <GitCompare size={18} />
+          <h3>Run Comparison</h3>
+        </div>
+        <p className="muted-text">No earlier run is available for comparison yet.</p>
+      </section>
+    );
+  }
+
+  const rows = comparisonRows(currentRun, previousRun);
+
+  return (
+    <section className="comparison-panel">
+      <div className="section-title-row">
+        <GitCompare size={18} />
+        <h3>Run Comparison</h3>
+        <span className={`mini-status mini-status--${comparisonTone(currentRun, previousRun)}`}>
+          {comparisonLabel(currentRun, previousRun)}
+        </span>
+      </div>
+
+      <div className="comparison-grid">
+        <ComparisonMetric label="Current verdict" tone={currentRun.status} value={currentRun.status} />
+        <ComparisonMetric label="Previous verdict" tone={previousRun.status} value={previousRun.status} />
+        <ComparisonMetric label="Checklist delta" tone="uncertain" value={checkDelta(currentRun, previousRun)} />
+      </div>
+
+      <div className="comparison-table" aria-label="Layer comparison">
+        {rows.map((row) => (
+          <div className="comparison-row" key={row.layer}>
+            <span>{row.layer.toUpperCase()}</span>
+            <strong className={`comparison-status comparison-status--${row.currentTone}`}>
+              {row.current}
+            </strong>
+            <code>{row.previous}</code>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ComparisonMetric({
+  label,
+  tone,
+  value,
+}: {
+  label: string;
+  tone: string;
+  value: string;
+}) {
+  return (
+    <div className={`comparison-metric comparison-metric--${statusTone(tone)}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 
@@ -697,6 +772,98 @@ function fallbackReason(reason: string): string {
   };
 
   return reasons[reason] ?? reason;
+}
+
+function findPreviousRun(allRuns: ProofRun[], currentRun: ProofRun | null): ProofRun | null {
+  if (!currentRun) {
+    return null;
+  }
+
+  const sortedRuns = [...allRuns].sort(
+    (first, second) => new Date(second.created_at).getTime() - new Date(first.created_at).getTime()
+  );
+  const currentIndex = sortedRuns.findIndex((run) => run.id === currentRun.id);
+
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  return sortedRuns[currentIndex + 1] ?? null;
+}
+
+function comparisonRows(currentRun: ProofRun, previousRun: ProofRun) {
+  const layers: VerificationLayer[] = ["ui", "api", "db", "diff"];
+  const currentChecks = checksByLayerMap(currentRun);
+  const previousChecks = checksByLayerMap(previousRun);
+
+  return layers.map((layer) => {
+    const current = currentChecks.get(layer)?.status ?? "skipped";
+    const previous = previousChecks.get(layer)?.status ?? "skipped";
+
+    return {
+      current,
+      currentTone: current === "skipped" ? "uncertain" : current,
+      layer,
+      previous,
+    };
+  });
+}
+
+function checksByLayerMap(run: ProofRun): Map<VerificationLayer, ProofCheck> {
+  const checks = new Map<VerificationLayer, ProofCheck>();
+  run.checks.forEach((check) => checks.set(check.layer, check));
+  return checks;
+}
+
+function checkDelta(currentRun: ProofRun, previousRun: ProofRun): string {
+  const delta = currentRun.checklist.checks.length - previousRun.checklist.checks.length;
+
+  if (delta > 0) {
+    return `+${delta}`;
+  }
+
+  return String(delta);
+}
+
+function comparisonLabel(currentRun: ProofRun, previousRun: ProofRun): string {
+  const currentScore = verdictScore(currentRun.status);
+  const previousScore = verdictScore(previousRun.status);
+
+  if (currentScore > previousScore) {
+    return "improved";
+  }
+
+  if (currentScore < previousScore) {
+    return "regressed";
+  }
+
+  return "unchanged";
+}
+
+function comparisonTone(currentRun: ProofRun, previousRun: ProofRun): "passed" | "failed" | "uncertain" {
+  const label = comparisonLabel(currentRun, previousRun);
+
+  if (label === "improved") {
+    return "passed";
+  }
+
+  if (label === "regressed") {
+    return "failed";
+  }
+
+  return "uncertain";
+}
+
+function verdictScore(status: string): number {
+  if (status === "passed") {
+    return 2;
+  }
+
+  if (status === "uncertain" || status === "pending" || status === "running") {
+    return 1;
+  }
+
+  return 0;
 }
 
 function formatAssertionValue(value: unknown): string {

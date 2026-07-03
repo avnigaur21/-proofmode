@@ -1,4 +1,20 @@
-import { AlertTriangle, Database, GitBranch, Globe2, KeyRound, MonitorCheck, Save, Search, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  Copy,
+  Database,
+  GitBranch,
+  Globe2,
+  KeyRound,
+  MonitorCheck,
+  Plus,
+  Save,
+  Search,
+  Server,
+  Settings2,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { RunCard } from "../components/RunCard";
@@ -6,6 +22,7 @@ import { RunDetail } from "../components/RunDetail";
 import {
   createProject,
   createRun,
+  deleteProject,
   getSettingsStatus,
   listProjects,
   listRuns,
@@ -59,6 +76,7 @@ export function App() {
   }, []);
 
   const selectedRun = runs.find((run) => run.id === selectedRunId) ?? runs[0] ?? null;
+  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
   const filteredRuns = filterRuns(runs, runSearch);
   const visibleRuns = showAllRuns ? filteredRuns : filteredRuns.slice(0, 4);
   const hiddenRunCount = filteredRuns.length - visibleRuns.length;
@@ -158,6 +176,48 @@ export function App() {
     }
   }
 
+  async function handleDuplicateProject() {
+    const sourceName = projectName.trim() || selectedProject?.name || "ProofMode local";
+    setIsSavingProject(true);
+    setError(null);
+
+    try {
+      const duplicatedProject = await createProject({
+        name: `${sourceName} copy`,
+        target_url: emptyToNull(targetUrl),
+        api_base_url: emptyToNull(apiBaseUrl),
+        repo_path: emptyToNull(repoPath),
+        target_db_url: emptyToNull(targetDbUrl),
+        default_run_config: runConfig,
+      });
+      setProjects((currentProjects) => [duplicatedProject, ...currentProjects]);
+      applyProject(duplicatedProject);
+    } catch {
+      setError("ProofMode could not duplicate this project profile.");
+    } finally {
+      setIsSavingProject(false);
+    }
+  }
+
+  async function handleDeleteProject() {
+    if (!selectedProjectId) {
+      return;
+    }
+
+    setIsSavingProject(true);
+    setError(null);
+
+    try {
+      await deleteProject(selectedProjectId);
+      setProjects((currentProjects) => currentProjects.filter((project) => project.id !== selectedProjectId));
+      resetProjectForm();
+    } catch {
+      setError("ProofMode could not delete this project profile.");
+    } finally {
+      setIsSavingProject(false);
+    }
+  }
+
   function handleProjectSelection(projectId: string) {
     setSelectedProjectId(projectId);
 
@@ -179,6 +239,17 @@ export function App() {
     setRepoPath(project.repo_path ?? "");
     setTargetDbUrl(project.target_db_url ?? "");
     setRunConfig(project.default_run_config);
+  }
+
+  function resetProjectForm() {
+    setSelectedProjectId("");
+    setProjectName("ProofMode local");
+    setTargetUrl("http://localhost:5173");
+    setApiBaseUrl("http://localhost:8000/health");
+    setRepoPath("");
+    setTargetDbUrl("");
+    setRunConfig(defaultRunConfig);
+    setError(null);
   }
 
   function applyRunPreset(preset: RunPreset) {
@@ -246,15 +317,44 @@ export function App() {
               />
             </label>
           </div>
-          <button
-            className="save-project-button"
-            disabled={isSavingProject || projectName.trim().length === 0}
-            onClick={handleSaveProject}
-            type="button"
-          >
-            <Save size={16} />
-            {isSavingProject ? "Saving" : selectedProjectId ? "Update Project" : "Save Project"}
-          </button>
+          <div className="project-profile-actions">
+            <button
+              className="secondary-icon-button"
+              disabled={isSavingProject}
+              onClick={resetProjectForm}
+              title="Start a new project profile"
+              type="button"
+            >
+              <Plus size={16} />
+            </button>
+            <button
+              className="secondary-icon-button"
+              disabled={isSavingProject || !selectedProject}
+              onClick={handleDuplicateProject}
+              title="Duplicate selected project profile"
+              type="button"
+            >
+              <Copy size={16} />
+            </button>
+            <button
+              className="secondary-icon-button secondary-icon-button--danger"
+              disabled={isSavingProject || !selectedProject}
+              onClick={handleDeleteProject}
+              title="Delete selected project profile"
+              type="button"
+            >
+              <Trash2 size={16} />
+            </button>
+            <button
+              className="save-project-button"
+              disabled={isSavingProject || projectName.trim().length === 0}
+              onClick={handleSaveProject}
+              type="button"
+            >
+              <Save size={16} />
+              {isSavingProject ? "Saving" : selectedProjectId ? "Update Project" : "Save Project"}
+            </button>
+          </div>
         </section>
         <form onSubmit={handleSubmit}>
           <label htmlFor="claim">Task completion claim</label>

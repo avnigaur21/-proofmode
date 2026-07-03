@@ -89,7 +89,7 @@ def test_settings_status_exposes_runtime_configuration() -> None:
     assert body["runs_directory"].endswith("runs")
 
 
-def test_project_profiles_can_be_created_listed_and_updated() -> None:
+def test_project_profiles_can_be_created_listed_updated_and_deleted() -> None:
     create_response = client.post(
         "/projects",
         json={
@@ -138,6 +138,15 @@ def test_project_profiles_can_be_created_listed_and_updated() -> None:
     assert updated_project["name"] == "ProofMode saved profile"
     assert updated_project["default_run_config"]["ui_enabled"] is False
     assert updated_project["default_run_config"]["planner_enabled"] is False
+
+    delete_response = client.delete(f"/projects/{project['id']}")
+    assert delete_response.status_code == 204
+
+    missing_response = client.get(f"/projects/{project['id']}")
+    assert missing_response.status_code == 404
+
+    missing_delete_response = client.delete(f"/projects/{project['id']}")
+    assert missing_delete_response.status_code == 404
 
 
 def test_approval_gate_persists_human_decision(tmp_path) -> None:

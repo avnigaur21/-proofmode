@@ -30,3 +30,10 @@ def update_project(project_id: str, payload: ProjectProfileUpdate) -> ProjectPro
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+
+@router.delete("/{project_id}", status_code=204)
+def delete_project(project_id: str) -> None:
+    deleted = project_service.delete_project(project_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Project not found")

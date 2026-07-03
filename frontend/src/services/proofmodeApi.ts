@@ -87,6 +87,16 @@ export async function updateProject(
   return response.json();
 }
 
+export async function deleteProject(projectId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to delete ProofMode project");
+  }
+}
+
 export async function getSettingsStatus(): Promise<SettingsStatus> {
   const response = await fetch(`${API_BASE_URL}/settings/status`);
 

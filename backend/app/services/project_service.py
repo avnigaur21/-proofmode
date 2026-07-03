@@ -44,5 +44,13 @@ class ProjectService:
         self._store.save(updated_project)
         return updated_project
 
+    def delete_project(self, project_id: str) -> bool:
+        if project_id not in self._projects:
+            return False
+
+        del self._projects[project_id]
+        self._store.delete(project_id)
+        return True
+
 
 project_service = ProjectService()

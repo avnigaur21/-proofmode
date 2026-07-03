@@ -32,5 +32,10 @@ class ProjectStore:
 
         return projects
 
+    def delete(self, project_id: str) -> None:
+        project_path = self._project_path(project_id)
+        if project_path.exists():
+            project_path.unlink()
+
     def _project_path(self, project_id: str) -> Path:
         return self._projects_dir / f"{project_id}.json"

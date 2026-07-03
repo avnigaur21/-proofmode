@@ -342,6 +342,12 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   margin-bottom: 0;
 }
 
+.project-profile-actions {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
 .save-project-button {
   display: inline-flex;
   align-items: center;
@@ -350,6 +356,37 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   min-height: 44px;
   justify-content: center;
   white-space: nowrap;
+}
+
+.secondary-icon-button {
+  display: inline-grid;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  color: var(--text-secondary);
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+  place-items: center;
+}
+
+.secondary-icon-button:hover:not(:disabled) {
+  color: var(--primary-accent);
+  background: #f0f9ff;
+  border-color: rgba(2, 132, 199, 0.28);
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.08);
+}
+
+.secondary-icon-button--danger {
+  color: var(--color-failed);
+}
+
+.secondary-icon-button--danger:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--color-failed);
+  border-color: var(--color-failed);
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.18);
 }
 
 .claim-form-row {

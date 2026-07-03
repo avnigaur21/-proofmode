@@ -4,7 +4,7 @@ from typing import Any
 from typing import Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class CheckStatus(StrEnum):
@@ -75,6 +75,40 @@ class ProofRunCreate(BaseModel):
     api_base_url: str | None = None
     target_db_url: str | None = None
     run_config: RunConfiguration = Field(default_factory=RunConfiguration)
+
+    @model_validator(mode="after")
+    def validate_run_setup(self) -> "ProofRunCreate":
+        issues: list[str] = []
+
+        if self.run_config.ui_enabled and self._is_blank(self.target_url):
+            issues.append("target_url is required when UI verification is enabled")
+
+        if self.run_config.api_enabled and self._is_blank(self.api_base_url):
+            issues.append("api_base_url is required when API verification is enabled")
+
+        if self.run_config.db_enabled and self._is_blank(self.target_db_url):
+            issues.append("target_db_url is required when database verification is enabled")
+
+        if self.run_config.diff_enabled and self._is_blank(self.repo_path):
+            issues.append("repo_path is required when Git diff analysis is enabled")
+
+        if not any(
+            (
+                self.run_config.ui_enabled,
+                self.run_config.api_enabled,
+                self.run_config.db_enabled,
+                self.run_config.diff_enabled,
+            )
+        ):
+            issues.append("at least one automated proof check must be enabled")
+
+        if issues:
+            raise ValueError("; ".join(issues))
+
+        return self
+
+    def _is_blank(self, value: str | None) -> bool:
+        return value is None or value.strip() == ""
 
 
 class ApprovalCreate(BaseModel):

@@ -12,15 +12,16 @@ from app.verifiers.db_verifier import DbVerifier
 client = TestClient(app)
 
 
-def test_create_run_returns_structured_report() -> None:
-    response = client.post("/runs", json={"claim": "Add login page"})
+def test_create_run_returns_structured_report(tmp_path) -> None:
+    repo_path = _empty_repo(tmp_path)
+    response = client.post("/runs", json=_diff_only_payload("Add login page", repo_path))
 
     assert response.status_code == 200
     body = response.json()
     assert body["claim"] == "Add login page"
-    assert body["status"] == "uncertain"
-    assert len(body["checklist"]["checks"]) >= 2
-    assert len(body["checks"]) == 4
+    assert body["status"] == "passed"
+    assert {check["layer"] for check in body["checklist"]["checks"]} == {"diff"}
+    assert len(body["checks"]) == 1
     assert len(body["timeline"]) >= 8
     assert body["timeline"][0]["type"] == "run.created"
     assert body["timeline"][-1]["type"] == "run.completed"
@@ -36,6 +37,38 @@ def test_create_run_returns_structured_report() -> None:
     assert reloaded_run.claim == "Add login page"
     assert reloaded_run.report_url == body["report_url"]
     assert reloaded_run.timeline[-1].type == "run.completed"
+
+
+def test_create_run_rejects_incomplete_enabled_layers() -> None:
+    response = client.post("/runs", json={"claim": "Bare claim should not run"})
+
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    message = str(errors)
+    assert "target_url is required when UI verification is enabled" in message
+    assert "api_base_url is required when API verification is enabled" in message
+    assert "target_db_url is required when database verification is enabled" in message
+    assert "repo_path is required when Git diff analysis is enabled" in message
+
+
+def test_create_run_rejects_when_all_automated_checks_are_disabled() -> None:
+    response = client.post(
+        "/runs",
+        json={
+            "claim": "Nothing automated selected",
+            "run_config": {
+                "ui_enabled": False,
+                "api_enabled": False,
+                "db_enabled": False,
+                "diff_enabled": False,
+                "planner_enabled": True,
+                "approval_required": True,
+            },
+        },
+    )
+
+    assert response.status_code == 422
+    assert "at least one automated proof check must be enabled" in str(response.json()["detail"])
 
 
 def test_artifact_routes_reject_path_traversal() -> None:
@@ -107,8 +140,9 @@ def test_project_profiles_can_be_created_listed_and_updated() -> None:
     assert updated_project["default_run_config"]["planner_enabled"] is False
 
 
-def test_approval_gate_persists_human_decision() -> None:
-    run_response = client.post("/runs", json={"claim": "Review approval gate"})
+def test_approval_gate_persists_human_decision(tmp_path) -> None:
+    repo_path = _empty_repo(tmp_path)
+    run_response = client.post("/runs", json=_diff_only_payload("Review approval gate", repo_path))
     assert run_response.status_code == 200
     run_id = run_response.json()["id"]
 
@@ -135,11 +169,13 @@ def test_approval_gate_persists_human_decision() -> None:
     assert reloaded_run.approval.decision == "fix_requested"
 
 
-def test_run_configuration_skips_disabled_layers() -> None:
+def test_run_configuration_skips_disabled_layers(tmp_path) -> None:
+    repo_path = _empty_repo(tmp_path)
     response = client.post(
         "/runs",
         json={
             "claim": "Verify diff only",
+            "repo_path": str(repo_path),
             "target_url": "http://localhost:5173",
             "api_base_url": "http://localhost:8000/health",
             "run_config": {
@@ -198,6 +234,14 @@ def test_db_snapshot_tracks_sqlite_row_count_changes(tmp_path) -> None:
     payload = {
         "claim": "Verify database row state",
         "target_db_url": f"sqlite:///{db_path.as_posix()}",
+        "run_config": {
+            "ui_enabled": False,
+            "api_enabled": False,
+            "db_enabled": True,
+            "diff_enabled": False,
+            "planner_enabled": True,
+            "approval_required": True,
+        },
     }
 
     first_response = client.post("/runs", json=payload)
@@ -273,6 +317,14 @@ def test_diff_verifier_classifies_changed_files(tmp_path) -> None:
         json={
             "claim": "Verify changed login, auth API, and user migration",
             "repo_path": str(repo_path),
+            "run_config": {
+                "ui_enabled": False,
+                "api_enabled": False,
+                "db_enabled": False,
+                "diff_enabled": True,
+                "planner_enabled": True,
+                "approval_required": True,
+            },
         },
     )
 
@@ -287,6 +339,30 @@ def test_diff_verifier_classifies_changed_files(tmp_path) -> None:
 
 def _check_for_layer(run: dict, layer: str) -> dict:
     return next(check for check in run["checks"] if check["layer"] == layer)
+
+
+def _diff_only_payload(claim: str, repo_path) -> dict:
+    return {
+        "claim": claim,
+        "repo_path": str(repo_path),
+        "run_config": {
+            "ui_enabled": False,
+            "api_enabled": False,
+            "db_enabled": False,
+            "diff_enabled": True,
+            "planner_enabled": True,
+            "approval_required": True,
+        },
+    }
+
+
+def _empty_repo(tmp_path):
+    repo_path = tmp_path / "repo"
+    repo_path.mkdir()
+    _git(repo_path, "init")
+    _git(repo_path, "config", "user.name", "ProofMode Test")
+    _git(repo_path, "config", "user.email", "proofmode@example.com")
+    return repo_path
 
 
 def _git(repo_path, *args: str) -> None:

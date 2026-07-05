@@ -31,6 +31,23 @@ class ReportGenerator:
             if run.approval.note:
                 lines.append(f"Note: {run.approval.note}")
 
+        if run.evaluation:
+            lines.extend(
+                [
+                    "",
+                    "## Evidence Evaluation",
+                    f"- Verdict: `{run.evaluation.verdict}`",
+                    f"- Confidence: `{run.evaluation.confidence:.2f}`",
+                    f"- Explanation: {run.evaluation.explanation}",
+                ]
+            )
+            if run.evaluation.reasons:
+                lines.append("- Reasons:")
+                lines.extend(f"  - {reason}" for reason in run.evaluation.reasons)
+            if run.evaluation.guardrails:
+                lines.append("- Guardrails:")
+                lines.extend(f"  - {guardrail}" for guardrail in run.evaluation.guardrails)
+
         lines.extend(["", "## Planned Checklist"])
 
         for planned_check in run.checklist.checks:

@@ -20,6 +20,8 @@ def test_create_run_returns_structured_report(tmp_path) -> None:
     body = response.json()
     assert body["claim"] == "Add login page"
     assert body["status"] == "passed"
+    assert body["evaluation"]["verdict"] == "supported"
+    assert body["evaluation"]["confidence"] > 0
     assert {check["layer"] for check in body["checklist"]["checks"]} == {"diff"}
     assert len(body["checks"]) == 1
     assert len(body["timeline"]) >= 8
@@ -36,7 +38,23 @@ def test_create_run_returns_structured_report(tmp_path) -> None:
     assert reloaded_run is not None
     assert reloaded_run.claim == "Add login page"
     assert reloaded_run.report_url == body["report_url"]
+    assert reloaded_run.evaluation is not None
+    assert reloaded_run.evaluation.verdict == "supported"
     assert reloaded_run.timeline[-1].type == "run.completed"
+
+
+def test_evidence_evaluator_contradicts_deterministic_failures(tmp_path) -> None:
+    repo_path = tmp_path / "not-a-git-repo"
+    repo_path.mkdir()
+
+    response = client.post("/runs", json=_diff_only_payload("Claim with invalid repo evidence", repo_path))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "failed"
+    assert body["evaluation"]["verdict"] == "contradicted"
+    assert "cannot be overridden" in " ".join(body["evaluation"]["guardrails"])
+    assert "evaluator.completed" in [event["type"] for event in body["timeline"]]
 
 
 def test_create_run_rejects_incomplete_enabled_layers() -> None:

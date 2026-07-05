@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { artifactUrl, loadTextArtifact, recordApproval } from "../services/proofmodeApi";
-import type { ApprovalDecision, ProofCheck, ProofRun, TimelineEvent, VerificationLayer } from "../types/runs";
+import type { ApprovalDecision, EvidenceEvaluation, ProofCheck, ProofRun, TimelineEvent, VerificationLayer } from "../types/runs";
 import { MarkdownReport } from "./MarkdownReport";
 
 const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
@@ -115,6 +115,8 @@ export function RunDetail({
 
       <RunConfigurationSummary run={currentRun} />
 
+      <EvidenceEvaluationPanel evaluation={currentRun.evaluation} />
+
       <RunComparison currentRun={currentRun} previousRun={previousRun} />
 
       {currentRun.run_config.approval_required ? (
@@ -183,6 +185,63 @@ export function RunDetail({
         )}
       </section>
     </section>
+  );
+}
+
+function EvidenceEvaluationPanel({ evaluation }: { evaluation?: EvidenceEvaluation | null }) {
+  if (!evaluation) {
+    return (
+      <section className="evaluation-panel evaluation-panel--empty">
+        <div className="section-title-row">
+          <ClipboardCheck size={18} />
+          <h3>Evidence Evaluation</h3>
+        </div>
+        <p className="muted-text">No evidence evaluation has been recorded for this run.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="evaluation-panel">
+      <div className="section-title-row">
+        <ClipboardCheck size={18} />
+        <h3>Evidence Evaluation</h3>
+        <span className={`mini-status mini-status--${evaluationTone(evaluation.verdict)}`}>
+          {evaluation.verdict}
+        </span>
+      </div>
+
+      <div className="evaluation-grid">
+        <div className={`evaluation-score evaluation-score--${evaluationTone(evaluation.verdict)}`}>
+          <span>Confidence</span>
+          <strong>{Math.round(evaluation.confidence * 100)}%</strong>
+        </div>
+        <div className="evaluation-explanation">
+          <span>{evaluation.evaluator_mode}</span>
+          <p>{evaluation.explanation}</p>
+        </div>
+      </div>
+
+      {evaluation.reasons.length > 0 ? (
+        <EvidenceEvaluationList title="Reasons" items={evaluation.reasons} />
+      ) : null}
+      {evaluation.guardrails.length > 0 ? (
+        <EvidenceEvaluationList title="Guardrails" items={evaluation.guardrails} />
+      ) : null}
+    </section>
+  );
+}
+
+function EvidenceEvaluationList({ items, title }: { items: string[]; title: string }) {
+  return (
+    <div className="evaluation-list">
+      <strong>{title}</strong>
+      <ul>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -695,6 +754,18 @@ function approvalTone(decision: ApprovalDecision): "passed" | "failed" | "uncert
   }
 
   if (decision === "rejected") {
+    return "failed";
+  }
+
+  return "uncertain";
+}
+
+function evaluationTone(verdict: string): "passed" | "failed" | "uncertain" {
+  if (verdict === "supported") {
+    return "passed";
+  }
+
+  if (verdict === "contradicted") {
     return "failed";
   }
 

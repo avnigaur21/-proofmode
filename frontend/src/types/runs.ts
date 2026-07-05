@@ -1,8 +1,9 @@
 export type CheckStatus = "passed" | "failed" | "uncertain";
 export type RunStatus = "pending" | "running" | "passed" | "failed" | "uncertain";
 export type ApprovalDecision = "approved" | "rejected" | "fix_requested";
+export type EvidenceVerdict = "supported" | "contradicted" | "insufficient";
 export type VerificationLayer = "ui" | "api" | "db" | "diff";
-export type TimelineLayer = "run" | "planner" | VerificationLayer | "report";
+export type TimelineLayer = "run" | "planner" | "evaluator" | VerificationLayer | "report";
 
 export type RunConfiguration = {
   ui_enabled: boolean;
@@ -60,6 +61,17 @@ export type ApprovalRecord = {
   decided_at: string;
 };
 
+export type EvidenceEvaluation = {
+  verdict: EvidenceVerdict;
+  confidence: number;
+  explanation: string;
+  reasons: string[];
+  guardrails: string[];
+  evaluator_mode: string;
+  provider?: string | null;
+  model?: string | null;
+};
+
 export type ProofRun = {
   id: string;
   claim: string;
@@ -72,6 +84,7 @@ export type ProofRun = {
   run_config: RunConfiguration;
   checklist: VerificationChecklist;
   checks: ProofCheck[];
+  evaluation?: EvidenceEvaluation | null;
   timeline: TimelineEvent[];
   approval?: ApprovalRecord | null;
   report_path?: string | null;

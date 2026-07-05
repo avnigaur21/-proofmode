@@ -967,6 +967,88 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   color: var(--primary-accent);
 }
 
+/* Evidence Evaluation */
+.evaluation-panel {
+  padding: 20px;
+  margin-bottom: 24px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.evaluation-panel--empty {
+  background: #ffffff;
+}
+
+.evaluation-grid {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.18fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.evaluation-score,
+.evaluation-explanation {
+  min-width: 0;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.evaluation-score span,
+.evaluation-explanation span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.evaluation-score strong {
+  color: var(--text-primary);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.evaluation-score--passed strong { color: var(--color-passed); }
+.evaluation-score--failed strong { color: var(--color-failed); }
+.evaluation-score--uncertain strong { color: var(--color-uncertain); }
+
+.evaluation-explanation p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.evaluation-list {
+  padding: 12px 14px;
+  margin-top: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.evaluation-list strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: 0.86rem;
+}
+
+.evaluation-list ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
 /* Run Comparison */
 .comparison-panel {
   padding: 20px;

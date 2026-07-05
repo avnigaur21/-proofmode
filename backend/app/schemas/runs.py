@@ -27,8 +27,14 @@ class ApprovalDecision(StrEnum):
     FIX_REQUESTED = "fix_requested"
 
 
+class EvidenceVerdict(StrEnum):
+    SUPPORTED = "supported"
+    CONTRADICTED = "contradicted"
+    INSUFFICIENT = "insufficient"
+
+
 VerificationLayer = Literal["ui", "api", "db", "diff"]
-TimelineLayer = Literal["run", "planner", "ui", "api", "db", "diff", "report"]
+TimelineLayer = Literal["run", "planner", "evaluator", "ui", "api", "db", "diff", "report"]
 
 
 class PlannedCheck(BaseModel):
@@ -131,6 +137,17 @@ class ProofCheck(BaseModel):
     evidence: dict[str, Any] = Field(default_factory=dict)
 
 
+class EvidenceEvaluation(BaseModel):
+    verdict: EvidenceVerdict
+    confidence: float = Field(ge=0, le=1)
+    explanation: str
+    reasons: list[str] = Field(default_factory=list)
+    guardrails: list[str] = Field(default_factory=list)
+    evaluator_mode: str = "deterministic"
+    provider: str | None = None
+    model: str | None = None
+
+
 class TimelineEvent(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     type: str
@@ -153,6 +170,7 @@ class ProofRun(BaseModel):
     run_config: RunConfiguration = Field(default_factory=RunConfiguration)
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)
     checks: list[ProofCheck] = Field(default_factory=list)
+    evaluation: EvidenceEvaluation | None = None
     timeline: list[TimelineEvent] = Field(default_factory=list)
     approval: ApprovalRecord | None = None
     report_path: str | None = None

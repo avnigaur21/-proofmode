@@ -10,6 +10,7 @@ from app.schemas.runs import (
     VerificationChecklist,
     VerificationLayer,
 )
+from app.services.evidence_evaluator import EvidenceEvaluator
 from app.services.planner import VerificationPlanner
 from app.services.report_generator import ReportGenerator
 from app.services.run_store import RunStore
@@ -25,6 +26,7 @@ class RunService:
         self._store = RunStore()
         self._runs: dict[str, ProofRun] = self._store.load_all()
         self._planner = VerificationPlanner()
+        self._evaluator = EvidenceEvaluator()
         self._report_generator = ReportGenerator()
         self._timeline = TimelineRecorder()
         self._verifiers: list[tuple[VerificationLayer, object]] = [
@@ -115,6 +117,20 @@ class RunService:
             layer="run",
             status=run.status,
             metadata={"check_statuses": {check.layer: check.status for check in checks}},
+        )
+        run.evaluation = self._evaluator.evaluate(run)
+        self._timeline.record(
+            run,
+            "evaluator.completed",
+            run.evaluation.explanation,
+            layer="evaluator",
+            status=run.evaluation.verdict,
+            metadata={
+                "confidence": run.evaluation.confidence,
+                "verdict": run.evaluation.verdict,
+                "evaluator_mode": run.evaluation.evaluator_mode,
+                "guardrails": run.evaluation.guardrails,
+            },
         )
         report_artifact = self._report_generator.artifact_for(run)
         run.report_path = report_artifact["path"]

@@ -44,6 +44,12 @@ class ReportGenerator:
             if run.evaluation.reasons:
                 lines.append("- Reasons:")
                 lines.extend(f"  - {reason}" for reason in run.evaluation.reasons)
+            if run.evaluation.rubrics:
+                lines.append("- Rubrics:")
+                lines.extend(
+                    f"  - `{rubric.name}`: {rubric.score:.2f} ({rubric.label}) - {rubric.explanation}"
+                    for rubric in run.evaluation.rubrics
+                )
             if run.evaluation.guardrails:
                 lines.append("- Guardrails:")
                 lines.extend(f"  - {guardrail}" for guardrail in run.evaluation.guardrails)

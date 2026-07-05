@@ -222,6 +222,21 @@ function EvidenceEvaluationPanel({ evaluation }: { evaluation?: EvidenceEvaluati
         </div>
       </div>
 
+      {evaluation.rubrics.length > 0 ? (
+        <div className="rubric-grid">
+          {evaluation.rubrics.map((rubric) => (
+            <div className={`rubric-card rubric-card--${rubricTone(rubric.score)}`} key={rubric.name}>
+              <div>
+                <span>{formatRubricName(rubric.name)}</span>
+                <strong>{Math.round(rubric.score * 100)}%</strong>
+              </div>
+              <code>{rubric.label}</code>
+              <p>{rubric.explanation}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {evaluation.reasons.length > 0 ? (
         <EvidenceEvaluationList title="Reasons" items={evaluation.reasons} />
       ) : null}
@@ -770,6 +785,25 @@ function evaluationTone(verdict: string): "passed" | "failed" | "uncertain" {
   }
 
   return "uncertain";
+}
+
+function rubricTone(score: number): "passed" | "failed" | "uncertain" {
+  if (score >= 0.65) {
+    return "passed";
+  }
+
+  if (score < 0.35) {
+    return "failed";
+  }
+
+  return "uncertain";
+}
+
+function formatRubricName(name: string): string {
+  return name
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function approvalLabel(decision: ApprovalDecision): string {

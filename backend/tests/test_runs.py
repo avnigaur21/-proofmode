@@ -23,6 +23,7 @@ def test_create_run_returns_structured_report(tmp_path) -> None:
     assert body["status"] == "passed"
     assert body["evaluation"]["verdict"] == "supported"
     assert body["evaluation"]["confidence"] > 0
+    assert len(body["evaluation"]["rubrics"]) >= 6
     assert {check["layer"] for check in body["checklist"]["checks"]} == {"diff"}
     assert len(body["checks"]) == 1
     assert len(body["timeline"]) >= 8
@@ -54,6 +55,7 @@ def test_evidence_evaluator_contradicts_deterministic_failures(tmp_path) -> None
     body = response.json()
     assert body["status"] == "failed"
     assert body["evaluation"]["verdict"] == "contradicted"
+    assert len(body["evaluation"]["rubrics"]) >= 6
     assert "cannot be overridden" in " ".join(body["evaluation"]["guardrails"])
     assert "evaluator.completed" in [event["type"] for event in body["timeline"]]
 
@@ -447,6 +449,14 @@ class _StrictEvaluatorProvider:
             "explanation": "The claim needs stronger evidence than the executed diff check.",
             "reasons": ["Only Git diff evidence was available."],
             "guardrails": ["LLM evaluator cannot execute missing checks."],
+            "rubrics": [
+                {
+                    "name": "claim_coverage",
+                    "score": 0.42,
+                    "label": "Partial",
+                    "explanation": "Only diff evidence was available.",
+                }
+            ],
         }
 
 

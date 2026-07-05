@@ -137,12 +137,20 @@ class ProofCheck(BaseModel):
     evidence: dict[str, Any] = Field(default_factory=dict)
 
 
+class EvaluationRubricScore(BaseModel):
+    name: str
+    score: float = Field(ge=0, le=1)
+    label: str
+    explanation: str
+
+
 class EvidenceEvaluation(BaseModel):
     verdict: EvidenceVerdict
     confidence: float = Field(ge=0, le=1)
     explanation: str
     reasons: list[str] = Field(default_factory=list)
     guardrails: list[str] = Field(default_factory=list)
+    rubrics: list[EvaluationRubricScore] = Field(default_factory=list)
     evaluator_mode: str = "deterministic"
     provider: str | None = None
     model: str | None = None

@@ -4,7 +4,7 @@ from typing import Any, Protocol
 
 import httpx
 
-from app.schemas.runs import CheckStatus, EvidenceEvaluation, EvidenceVerdict, ProofRun
+from app.schemas.runs import CheckStatus, EvaluationRubricScore, EvidenceEvaluation, EvidenceVerdict, ProofRun
 
 
 class EvidenceEvaluatorProvider(Protocol):
@@ -29,7 +29,24 @@ class HeuristicEvidenceEvaluatorProvider:
             ),
             "reasons": [f"{check.layer.upper()}: {check.summary}" for check in run.checks],
             "guardrails": [],
+            "rubrics": self._rubrics(run),
         }
+
+    def _rubrics(self, run: ProofRun) -> list[dict[str, Any]]:
+        return [
+            {
+                "name": "claim_coverage",
+                "score": 0.78,
+                "label": "Good",
+                "explanation": "Executed checks cover the configured proof layers for the claim.",
+            },
+            {
+                "name": "evidence_completeness",
+                "score": 0.76,
+                "label": "Good",
+                "explanation": f"{len(run.checks)} proof check(s) produced usable evidence.",
+            },
+        ]
 
 
 class OpenAiEvidenceEvaluatorProvider:
@@ -89,6 +106,14 @@ class OpenAiEvidenceEvaluatorProvider:
                                 "explanation": "short explanation",
                                 "reasons": ["specific evidence-based reason"],
                                 "guardrails": ["safety or limitation note"],
+                                "rubrics": [
+                                    {
+                                        "name": "claim_coverage",
+                                        "score": "number between 0 and 1",
+                                        "label": "Weak | Partial | Good | Strong",
+                                        "explanation": "why this score was assigned",
+                                    }
+                                ],
                             },
                         },
                         indent=2,
@@ -112,8 +137,22 @@ class OpenAiEvidenceEvaluatorProvider:
                             "explanation": {"type": "string"},
                             "reasons": {"type": "array", "items": {"type": "string"}},
                             "guardrails": {"type": "array", "items": {"type": "string"}},
+                            "rubrics": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "properties": {
+                                        "name": {"type": "string"},
+                                        "score": {"type": "number", "minimum": 0, "maximum": 1},
+                                        "label": {"type": "string"},
+                                        "explanation": {"type": "string"},
+                                    },
+                                    "required": ["name", "score", "label", "explanation"],
+                                },
+                            },
                         },
-                        "required": ["verdict", "confidence", "explanation", "reasons", "guardrails"],
+                        "required": ["verdict", "confidence", "explanation", "reasons", "guardrails", "rubrics"],
                     },
                 },
             },
@@ -173,6 +212,7 @@ class EvidenceEvaluator:
                 explanation="No automated proof checks ran, so the claim cannot be evaluated.",
                 reasons=["No UI, API, DB, or Git diff evidence was available."],
                 guardrails=["Evaluator cannot mark a claim supported without executed proof checks."],
+                rubrics=self._rubrics_for(run),
                 evaluator_mode=self._guarded_mode(),
                 provider=self._provider.provider_name,
                 model=self._provider.model_name,
@@ -193,6 +233,7 @@ class EvidenceEvaluator:
                     "Deterministic verifier failures cannot be overridden by evaluator judgment.",
                     "A failed UI/API/DB/Git proof keeps the claim from being marked supported.",
                 ],
+                rubrics=self._rubrics_for(run),
                 evaluator_mode=self._guarded_mode(),
                 provider=self._provider.provider_name,
                 model=self._provider.model_name,
@@ -213,6 +254,7 @@ class EvidenceEvaluator:
                     "Uncertain proof results require human review or stronger targeted checks.",
                     "Evaluator does not upgrade inconclusive evidence to supported.",
                 ],
+                rubrics=self._rubrics_for(run),
                 evaluator_mode=self._guarded_mode(),
                 provider=self._provider.provider_name,
                 model=self._provider.model_name,
@@ -230,6 +272,7 @@ class EvidenceEvaluator:
                 "Supported means supported by executed checks, not a guarantee that untested behavior is correct.",
                 "Human approval can still require additional evidence before accepting the run.",
             ],
+            rubrics=self._rubrics_for(run),
             provider=self._provider.provider_name,
             model=self._provider.model_name,
         )
@@ -270,3 +313,90 @@ class EvidenceEvaluator:
 
     def _guarded_mode(self) -> str:
         return "guarded_deterministic" if self._mode == "llm" else "deterministic"
+
+    def _rubrics_for(self, run: ProofRun) -> list[EvaluationRubricScore]:
+        return [
+            self._rubric(
+                "claim_coverage",
+                self._claim_coverage_score(run),
+                "How well executed checks cover the agent's claim.",
+            ),
+            self._rubric(
+                "ui_proof_strength",
+                self._layer_score(run, "ui"),
+                "Strength of browser/UI evidence.",
+            ),
+            self._rubric(
+                "api_proof_strength",
+                self._layer_score(run, "api"),
+                "Strength of API contract evidence.",
+            ),
+            self._rubric(
+                "db_proof_strength",
+                self._layer_score(run, "db"),
+                "Strength of database state evidence.",
+            ),
+            self._rubric(
+                "git_diff_relevance",
+                self._layer_score(run, "diff"),
+                "Whether changed-code evidence was inspected.",
+            ),
+            self._rubric(
+                "evidence_completeness",
+                self._evidence_completeness_score(run),
+                "Overall completeness across enabled proof layers.",
+            ),
+        ]
+
+    def _rubric(self, name: str, score: float, explanation_prefix: str) -> EvaluationRubricScore:
+        bounded_score = max(0, min(score, 1))
+        label = self._score_label(bounded_score)
+        return EvaluationRubricScore(
+            name=name,
+            score=bounded_score,
+            label=label,
+            explanation=f"{explanation_prefix} {label.lower()} confidence based on executed proof results.",
+        )
+
+    def _claim_coverage_score(self, run: ProofRun) -> float:
+        if not run.checklist.checks:
+            return 0.15
+        executed_layers = {check.layer for check in run.checks}
+        planned_layers = {check.layer for check in run.checklist.checks}
+        if not planned_layers:
+            return 0.2
+        return len(executed_layers.intersection(planned_layers)) / len(planned_layers)
+
+    def _layer_score(self, run: ProofRun, layer: str) -> float:
+        if not run.run_config.is_layer_enabled(layer):  # type: ignore[arg-type]
+            return 0.5
+
+        check = next((check for check in run.checks if check.layer == layer), None)
+        if check is None:
+            return 0.15
+        if check.status == CheckStatus.PASSED:
+            return 0.88
+        if check.status == CheckStatus.UNCERTAIN:
+            return 0.45
+        return 0.05
+
+    def _evidence_completeness_score(self, run: ProofRun) -> float:
+        enabled_layers = [
+            layer
+            for layer in ("ui", "api", "db", "diff")
+            if run.run_config.is_layer_enabled(layer)  # type: ignore[arg-type]
+        ]
+        if not enabled_layers:
+            return 0.1
+
+        executed_layers = {check.layer for check in run.checks}
+        return len(executed_layers.intersection(enabled_layers)) / len(enabled_layers)
+
+    def _score_label(self, score: float) -> str:
+        if score >= 0.85:
+            return "Strong"
+        if score >= 0.65:
+            return "Good"
+        if score >= 0.35:
+            return "Partial"
+        return "Weak"

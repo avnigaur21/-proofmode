@@ -67,9 +67,17 @@ export type EvidenceEvaluation = {
   explanation: string;
   reasons: string[];
   guardrails: string[];
+  rubrics: EvaluationRubricScore[];
   evaluator_mode: string;
   provider?: string | null;
   model?: string | null;
+};
+
+export type EvaluationRubricScore = {
+  name: string;
+  score: number;
+  label: string;
+  explanation: string;
 };
 
 export type ProofRun = {

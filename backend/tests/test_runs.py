@@ -4,7 +4,8 @@ import subprocess
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.schemas.runs import PlannedCheck, ProofRun, VerificationChecklist
+from app.schemas.runs import CheckStatus, PlannedCheck, ProofCheck, ProofRun, VerificationChecklist
+from app.services.evidence_evaluator import EvidenceEvaluator
 from app.services.run_service import RunService
 from app.verifiers.db_verifier import DbVerifier
 
@@ -55,6 +56,45 @@ def test_evidence_evaluator_contradicts_deterministic_failures(tmp_path) -> None
     assert body["evaluation"]["verdict"] == "contradicted"
     assert "cannot be overridden" in " ".join(body["evaluation"]["guardrails"])
     assert "evaluator.completed" in [event["type"] for event in body["timeline"]]
+
+
+def test_llm_evidence_evaluator_can_downgrade_clean_evidence() -> None:
+    run = ProofRun(
+        claim="Agent says checkout is complete",
+        checks=[
+            ProofCheck(
+                layer="diff",
+                status=CheckStatus.PASSED,
+                summary="Git diff review passed.",
+            )
+        ],
+    )
+
+    evaluation = EvidenceEvaluator(mode="llm", provider=_StrictEvaluatorProvider()).evaluate(run)
+
+    assert evaluation.verdict == "insufficient"
+    assert evaluation.evaluator_mode == "llm"
+    assert evaluation.provider == "fake-strict"
+    assert "Deterministic verifier failures cannot be overridden" in " ".join(evaluation.guardrails)
+
+
+def test_llm_evidence_evaluator_falls_back_on_invalid_output() -> None:
+    run = ProofRun(
+        claim="Agent says checkout is complete",
+        checks=[
+            ProofCheck(
+                layer="diff",
+                status=CheckStatus.PASSED,
+                summary="Git diff review passed.",
+            )
+        ],
+    )
+
+    evaluation = EvidenceEvaluator(mode="llm", provider=_BrokenEvaluatorProvider()).evaluate(run)
+
+    assert evaluation.verdict == "supported"
+    assert evaluation.evaluator_mode == "deterministic_fallback"
+    assert "deterministic evaluation was used" in " ".join(evaluation.guardrails)
 
 
 def test_create_run_rejects_incomplete_enabled_layers() -> None:
@@ -394,3 +434,25 @@ def _empty_repo(tmp_path):
 
 def _git(repo_path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=repo_path, check=True, capture_output=True)
+
+
+class _StrictEvaluatorProvider:
+    provider_name = "fake-strict"
+    model_name = "fake-evaluator"
+
+    def evaluate(self, run: ProofRun) -> dict:
+        return {
+            "verdict": "insufficient",
+            "confidence": 0.61,
+            "explanation": "The claim needs stronger evidence than the executed diff check.",
+            "reasons": ["Only Git diff evidence was available."],
+            "guardrails": ["LLM evaluator cannot execute missing checks."],
+        }
+
+
+class _BrokenEvaluatorProvider:
+    provider_name = "fake-broken"
+    model_name = "fake-evaluator"
+
+    def evaluate(self, run: ProofRun) -> dict:
+        return {"verdict": "definitely maybe"}

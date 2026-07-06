@@ -1024,6 +1024,26 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   line-height: 1.5;
 }
 
+.evaluation-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.evaluation-meta code {
+  max-width: 100%;
+  padding: 3px 7px;
+  overflow: hidden;
+  color: var(--primary-accent);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #e0f2fe;
+  border: 1px solid rgba(2, 132, 199, 0.18);
+  border-radius: 999px;
+}
+
 .rubric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

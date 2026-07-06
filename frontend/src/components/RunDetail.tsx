@@ -219,6 +219,10 @@ function EvidenceEvaluationPanel({ evaluation }: { evaluation?: EvidenceEvaluati
         <div className="evaluation-explanation">
           <span>{evaluation.evaluator_mode}</span>
           <p>{evaluation.explanation}</p>
+          <div className="evaluation-meta">
+            <code>provider: {evaluation.provider ?? "local"}</code>
+            <code>model: {evaluation.model ?? "n/a"}</code>
+          </div>
         </div>
       </div>
 

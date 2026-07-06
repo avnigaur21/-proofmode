@@ -1,6 +1,7 @@
 export type SettingsStatus = {
   backend_status: string;
   planner_mode: string;
+  evaluator_mode: string;
   llm_provider: string;
   llm_model: string;
   openai_api_key_configured: boolean;

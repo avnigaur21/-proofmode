@@ -10,6 +10,7 @@ class SettingsStatusService:
         return SettingsStatus(
             backend_status="online",
             planner_mode=os.getenv("PROOFMODE_PLANNER_MODE", "deterministic"),
+            evaluator_mode=os.getenv("PROOFMODE_EVALUATOR_MODE", "deterministic"),
             llm_provider=os.getenv("PROOFMODE_LLM_PROVIDER", "heuristic"),
             llm_model=os.getenv("PROOFMODE_LLM_MODEL", "gpt-4.1-mini"),
             openai_api_key_configured=bool(os.getenv("OPENAI_API_KEY")),

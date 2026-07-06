@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ClipboardCheck,
   Copy,
   Database,
   GitBranch,
@@ -678,6 +679,12 @@ function SettingsStatusPanel({ status }: { status: SettingsStatus | null }) {
         label="Planner"
         tone={status?.planner_mode === "llm" ? "passed" : "neutral"}
         value={status?.planner_mode ?? "unknown"}
+      />
+      <StatusChip
+        icon={<ClipboardCheck size={15} />}
+        label="Evaluator"
+        tone={status?.evaluator_mode === "llm" ? "passed" : "neutral"}
+        value={status?.evaluator_mode ?? "unknown"}
       />
       <StatusChip
         icon={<Sparkles size={15} />}

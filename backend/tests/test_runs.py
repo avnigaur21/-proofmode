@@ -143,6 +143,7 @@ def test_settings_status_exposes_runtime_configuration() -> None:
     body = response.json()
     assert body["backend_status"] == "online"
     assert body["planner_mode"] in {"deterministic", "llm"}
+    assert body["evaluator_mode"] in {"deterministic", "llm"}
     assert body["llm_provider"] in {"heuristic", "openai"}
     assert isinstance(body["openai_api_key_configured"], bool)
     assert body["run_persistence_enabled"] is True

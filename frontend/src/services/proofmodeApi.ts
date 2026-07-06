@@ -1,4 +1,5 @@
 import type { ProjectProfile, ProjectProfileCreate, ProjectProfileUpdate } from "../types/projects";
+import type { ClaimIngestionCreate, ClaimIngestionResponse, IngestedClaim } from "../types/claims";
 import type { ApprovalCreate, ProofRun, ProofRunCreate } from "../types/runs";
 import type { SettingsStatus } from "../types/settings";
 
@@ -37,6 +38,32 @@ export async function listRuns(): Promise<ProofRun[]> {
 
   if (!response.ok) {
     throw new Error("Unable to load ProofMode runs");
+  }
+
+  return response.json();
+}
+
+export async function ingestClaim(payload: ClaimIngestionCreate): Promise<ClaimIngestionResponse> {
+  const response = await fetch(`${API_BASE_URL}/claims/ingest`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to ingest ProofMode claim");
+  }
+
+  return response.json();
+}
+
+export async function listClaims(): Promise<IngestedClaim[]> {
+  const response = await fetch(`${API_BASE_URL}/claims`);
+
+  if (!response.ok) {
+    throw new Error("Unable to load ProofMode claims");
   }
 
   return response.json();

@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  Bot,
   CheckCircle2,
   CircleHelp,
   ClipboardCheck,
@@ -115,6 +116,8 @@ export function RunDetail({
 
       <RunConfigurationSummary run={currentRun} />
 
+      <ClaimSourcePanel run={currentRun} />
+
       <EvidenceEvaluationPanel evaluation={currentRun.evaluation} />
 
       <RunComparison currentRun={currentRun} previousRun={previousRun} />
@@ -185,6 +188,55 @@ export function RunDetail({
         )}
       </section>
     </section>
+  );
+}
+
+function ClaimSourcePanel({ run }: { run: ProofRun }) {
+  const source = run.claim_source ?? {
+    source: "manual",
+    agent_name: null,
+    project_id: null,
+    external_id: null,
+    metadata: {},
+  };
+  const metadataEntries = Object.entries(source.metadata ?? {}).slice(0, 6);
+
+  return (
+    <section className="claim-source-panel">
+      <div className="section-title-row">
+        <Bot size={18} />
+        <h3>Claim Intake</h3>
+        <span className="mini-status mini-status--uncertain">{source.source}</span>
+      </div>
+
+      <div className="claim-source-grid">
+        <ClaimSourceMetric label="Source" value={source.source} />
+        <ClaimSourceMetric label="Agent" value={source.agent_name ?? "unspecified"} />
+        <ClaimSourceMetric label="Project" value={source.project_id ?? "none"} />
+        <ClaimSourceMetric label="External ID" value={source.external_id ?? "none"} />
+      </div>
+
+      {metadataEntries.length > 0 ? (
+        <div className="claim-source-metadata">
+          {metadataEntries.map(([key, value]) => (
+            <code key={key}>
+              {key}: {formatMetadataValue(value)}
+            </code>
+          ))}
+        </div>
+      ) : (
+        <p className="muted-text">No extra source metadata was attached to this claim.</p>
+      )}
+    </section>
+  );
+}
+
+function ClaimSourceMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="claim-source-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 
@@ -985,4 +1037,12 @@ function formatAssertionValue(value: unknown): string {
   }
 
   return String(value);
+}
+
+function formatMetadataValue(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
 }

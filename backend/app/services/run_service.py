@@ -44,6 +44,7 @@ class RunService:
             api_base_url=payload.api_base_url,
             target_db_url=payload.target_db_url,
             run_config=payload.run_config,
+            claim_source=payload.claim_source,
             status=RunStatus.RUNNING,
         )
         self._timeline.record(
@@ -58,6 +59,7 @@ class RunService:
                 "has_target_db_url": bool(payload.target_db_url),
                 "has_repo_path": bool(payload.repo_path),
                 "run_config": payload.run_config.model_dump(mode="json"),
+                "claim_source": payload.claim_source.model_dump(mode="json"),
             },
         )
 

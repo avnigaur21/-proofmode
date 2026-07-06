@@ -74,6 +74,14 @@ class RunConfiguration(BaseModel):
         return bool(getattr(self, f"{layer}_enabled"))
 
 
+class ClaimSourceMetadata(BaseModel):
+    source: str = "manual"
+    agent_name: str | None = None
+    project_id: str | None = None
+    external_id: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ProofRunCreate(BaseModel):
     claim: str = Field(..., min_length=1)
     repo_path: str | None = None
@@ -81,6 +89,7 @@ class ProofRunCreate(BaseModel):
     api_base_url: str | None = None
     target_db_url: str | None = None
     run_config: RunConfiguration = Field(default_factory=RunConfiguration)
+    claim_source: ClaimSourceMetadata = Field(default_factory=ClaimSourceMetadata)
 
     @model_validator(mode="after")
     def validate_run_setup(self) -> "ProofRunCreate":
@@ -176,6 +185,7 @@ class ProofRun(BaseModel):
     api_base_url: str | None = None
     target_db_url: str | None = None
     run_config: RunConfiguration = Field(default_factory=RunConfiguration)
+    claim_source: ClaimSourceMetadata = Field(default_factory=ClaimSourceMetadata)
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)
     checks: list[ProofCheck] = Field(default_factory=list)
     evaluation: EvidenceEvaluation | None = None

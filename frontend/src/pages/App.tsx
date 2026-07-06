@@ -854,6 +854,9 @@ function filterRuns(runs: ProofRun[], query: string): ProofRun[] {
       run.claim,
       run.id,
       run.status,
+      run.claim_source?.source,
+      run.claim_source?.agent_name,
+      run.claim_source?.external_id,
       run.approval?.decision,
       run.checklist.checks.map((check) => `${check.layer} ${check.type} ${check.description}`).join(" "),
     ]

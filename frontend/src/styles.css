@@ -770,6 +770,31 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   color: var(--text-primary);
 }
 
+.claim-source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 0 9px;
+  color: var(--primary-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #e0f2fe;
+  border: 1px solid rgba(2, 132, 199, 0.18);
+  border-radius: 999px;
+}
+
+.claim-source-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.claim-source-chip--compact {
+  margin-top: 8px;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -935,6 +960,69 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   background: #f8fafc;
   border: 1px solid var(--border-color);
   border-radius: 10px;
+}
+
+.claim-source-panel {
+  padding: 20px;
+  margin-bottom: 24px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.claim-source-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.claim-source-metric {
+  min-width: 0;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.claim-source-metric span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.claim-source-metric strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.claim-source-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.claim-source-metadata code {
+  max-width: 100%;
+  padding: 5px 8px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
 }
 
 .config-chip {

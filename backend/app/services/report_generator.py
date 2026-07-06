@@ -18,7 +18,19 @@ class ReportGenerator:
             f"- Git diff analysis: `{self._enabled(run.run_config.diff_enabled)}`",
             f"- Verification planner: `{self._enabled(run.run_config.planner_enabled)}`",
             f"- Human approval gate: `{self._enabled(run.run_config.approval_required)}`",
+            "",
+            "## Claim Source",
+            f"- Source: `{run.claim_source.source}`",
+            f"- Agent: `{run.claim_source.agent_name or 'unspecified'}`",
+            f"- Project ID: `{run.claim_source.project_id or 'none'}`",
+            f"- External ID: `{run.claim_source.external_id or 'none'}`",
         ]
+
+        if run.claim_source.metadata:
+            lines.append("- Metadata:")
+            lines.extend(
+                f"  - `{key}`: `{value}`" for key, value in run.claim_source.metadata.items()
+            )
 
         if run.approval:
             lines.extend(

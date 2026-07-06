@@ -47,6 +47,72 @@ def test_create_run_returns_structured_report(tmp_path) -> None:
     assert reloaded_run.timeline[-1].type == "run.completed"
 
 
+def test_claim_ingestion_creates_linked_run_from_project_profile(tmp_path) -> None:
+    repo_path = _empty_repo(tmp_path)
+    project_response = client.post(
+        "/projects",
+        json={
+            "name": "Claim ingestion app",
+            "repo_path": str(repo_path),
+            "default_run_config": {
+                "ui_enabled": False,
+                "api_enabled": False,
+                "db_enabled": False,
+                "diff_enabled": True,
+                "planner_enabled": True,
+                "approval_required": True,
+            },
+        },
+    )
+    assert project_response.status_code == 200
+    project = project_response.json()
+
+    response = client.post(
+        "/claims/ingest",
+        json={
+            "claim": "Agent says login is complete",
+            "source": "codex",
+            "agent_name": "Codex",
+            "project_id": project["id"],
+            "external_id": "commit-abc123",
+            "metadata": {"commit_sha": "abc123", "branch": "main"},
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["claim_record"]["source"] == "codex"
+    assert body["claim_record"]["agent_name"] == "Codex"
+    assert body["claim_record"]["run_id"] == body["run"]["id"]
+    assert body["run"]["claim_source"]["source"] == "codex"
+    assert body["run"]["claim_source"]["agent_name"] == "Codex"
+    assert body["run"]["claim_source"]["metadata"]["commit_sha"] == "abc123"
+    assert [check["layer"] for check in body["run"]["checks"]] == ["diff"]
+
+    list_response = client.get("/claims")
+    assert list_response.status_code == 200
+    assert any(claim["id"] == body["claim_record"]["id"] for claim in list_response.json())
+
+    report_response = client.get(body["run"]["report_url"])
+    assert report_response.status_code == 200
+    assert "## Claim Source" in report_response.text
+    assert "codex" in report_response.text
+
+
+def test_claim_ingestion_rejects_unknown_project() -> None:
+    response = client.post(
+        "/claims/ingest",
+        json={
+            "claim": "Agent says auth is done",
+            "source": "claude_code",
+            "project_id": "missing-project",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project not found"
+
+
 def test_evidence_evaluator_contradicts_deterministic_failures(tmp_path) -> None:
     repo_path = tmp_path / "not-a-git-repo"
     repo_path.mkdir()

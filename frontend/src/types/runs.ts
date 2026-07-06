@@ -14,6 +14,14 @@ export type RunConfiguration = {
   approval_required: boolean;
 };
 
+export type ClaimSourceMetadata = {
+  source: string;
+  agent_name?: string | null;
+  project_id?: string | null;
+  external_id?: string | null;
+  metadata: Record<string, unknown>;
+};
+
 export type ProofCheck = {
   layer: VerificationLayer;
   status: CheckStatus;
@@ -90,6 +98,7 @@ export type ProofRun = {
   api_base_url?: string | null;
   target_db_url?: string | null;
   run_config: RunConfiguration;
+  claim_source: ClaimSourceMetadata;
   checklist: VerificationChecklist;
   checks: ProofCheck[];
   evaluation?: EvidenceEvaluation | null;
@@ -106,6 +115,7 @@ export type ProofRunCreate = {
   api_base_url?: string | null;
   target_db_url?: string | null;
   run_config?: RunConfiguration;
+  claim_source?: ClaimSourceMetadata;
 };
 
 export type ApprovalCreate = {

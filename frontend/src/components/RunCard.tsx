@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, CircleHelp, Database, GitBranch, Globe2, MonitorCheck } from "lucide-react";
+import { AlertTriangle, Bot, CheckCircle2, CircleHelp, Database, GitBranch, Globe2, MonitorCheck } from "lucide-react";
 import type { ProofRun, VerificationLayer } from "../types/runs";
 
 const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
@@ -26,6 +26,10 @@ export function RunCard({
         <div>
           <p className="eyebrow">Proof Run</p>
           <h2>{run.claim}</h2>
+          <div className="claim-source-chip claim-source-chip--compact">
+            <Bot size={13} />
+            <span>{claimSourceLabel(run)}</span>
+          </div>
         </div>
         <span className={`status-pill status-pill--${run.status}`}>
           <StatusIcon size={16} />
@@ -66,4 +70,10 @@ export function RunCard({
       </button>
     </article>
   );
+}
+
+function claimSourceLabel(run: ProofRun): string {
+  const source = run.claim_source?.source ?? "manual";
+  const agent = run.claim_source?.agent_name;
+  return agent ? `${agent} via ${source}` : source;
 }

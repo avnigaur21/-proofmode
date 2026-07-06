@@ -82,6 +82,36 @@ pip install -r requirements-dev.txt
 pytest tests
 ```
 
+CLI verification:
+
+```bash
+cd backend
+python -m app.cli verify --claim "Agent says login is complete" --project "ProofMode local"
+```
+
+You can also run without a saved project by passing the target evidence inputs directly:
+
+```bash
+python -m app.cli verify \
+  --claim "Agent says checkout flow is complete" \
+  --checks diff \
+  --repo-path C:\path\to\repo \
+  --source ci \
+  --agent-name Codex
+```
+
+The CLI uses the same claim ingestion path as external tools. It stores the claim under `proofmode-runs/claims/`, creates a normal ProofMode run, writes the Markdown report, and exits with:
+
+- `0` when the run passes
+- `1` when ProofMode returns failed or uncertain evidence
+- `2` for CLI/setup errors such as an unknown project or invalid metadata
+
+For machine-readable CI output:
+
+```bash
+python -m app.cli verify --claim "Agent says login works" --project "ProofMode local" --json
+```
+
 Seed demo runs:
 
 ```bash

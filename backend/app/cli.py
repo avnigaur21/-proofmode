@@ -10,6 +10,7 @@ from app.schemas.claims import ClaimIngestionCreate
 from app.schemas.projects import ProjectProfile
 from app.schemas.runs import ProofRun, RunConfiguration
 from app.services.claim_ingestion_service import claim_ingestion_service
+from app.services.evidence_bundle import evidence_bundle_service
 from app.services.project_service import project_service
 
 
@@ -55,6 +56,9 @@ def _verify(args: argparse.Namespace) -> int:
         return 2
 
     run = result.run
+    bundle_artifact = evidence_bundle_service.export(run) if args.bundle else None
+    if bundle_artifact and args.bundle_path:
+        _copy_bundle(bundle_artifact["path"], args.bundle_path)
 
     if args.json:
         print(
@@ -67,6 +71,8 @@ def _verify(args: argparse.Namespace) -> int:
                     "checks": [check.model_dump(mode="json") for check in run.checks],
                     "report_path": run.report_path,
                     "report_url": run.report_url,
+                    "bundle_path": bundle_artifact["path"] if bundle_artifact else None,
+                    "bundle_url": bundle_artifact["url"] if bundle_artifact else None,
                 },
                 indent=2,
             )
@@ -79,6 +85,9 @@ def _verify(args: argparse.Namespace) -> int:
 
     if args.github_step_summary:
         _append_github_step_summary(result.claim_record.id, run)
+
+    if bundle_artifact and not args.json:
+        print(f"Evidence bundle: {bundle_artifact['path']}")
 
     return 0 if str(run.status) == "passed" else 1
 
@@ -111,6 +120,8 @@ def _build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--no-approval", action="store_true", help="mark human approval as not required")
     verify.add_argument("--json", action="store_true", help="print machine-readable JSON output")
     verify.add_argument("--summary-file", help="write a PR-friendly Markdown summary to this path")
+    verify.add_argument("--bundle", action="store_true", help="export an evidence bundle ZIP for this run")
+    verify.add_argument("--bundle-path", help="copy the generated evidence bundle ZIP to this path")
     verify.add_argument(
         "--github-step-summary",
         action="store_true",
@@ -216,6 +227,12 @@ def _print_run_summary(claim_id: str, run) -> None:
 def _write_summary_file(path: str, claim_id: str, run: ProofRun) -> None:
     with open(path, "w", encoding="utf-8") as summary_file:
         summary_file.write(_to_pr_markdown(claim_id, run))
+
+
+def _copy_bundle(source: str, destination: str) -> None:
+    with open(source, "rb") as source_file:
+        with open(destination, "wb") as destination_file:
+            destination_file.write(source_file.read())
 
 
 def _append_github_step_summary(claim_id: str, run: ProofRun) -> None:

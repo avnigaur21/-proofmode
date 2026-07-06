@@ -17,6 +17,7 @@ proofmode-runs/claims/*
 proofmode-runs/projects/*
 proofmode-runs/runs/*
 proofmode-runs/screenshots/*
+proofmode-runs/bundles/*
 proofmode-runs/logs/*
 proofmode-runs/snapshots/*
 proofmode-runs/*.db

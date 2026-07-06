@@ -1,5 +1,6 @@
 import json
 import subprocess
+from zipfile import ZipFile
 
 from app.cli import main
 from app.services.project_service import project_service
@@ -103,6 +104,43 @@ def test_cli_verify_writes_pr_summary_and_uses_diff_range(tmp_path, capsys) -> N
     assert "ProofMode PR Verification" in summary
     assert "**Status:** `passed`" in summary
     assert "**DIFF** `passed`" in summary
+
+
+def test_cli_verify_exports_evidence_bundle(tmp_path, capsys) -> None:
+    repo_path = _empty_repo(tmp_path)
+    bundle_path = tmp_path / "proofmode-bundle.zip"
+
+    exit_code = main(
+        [
+            "verify",
+            "--claim",
+            "Agent says settings page is complete",
+            "--repo-path",
+            str(repo_path),
+            "--checks",
+            "diff",
+            "--bundle",
+            "--bundle-path",
+            str(bundle_path),
+            "--json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    body = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert body["bundle_path"]
+    assert body["bundle_url"].startswith("/artifacts/bundles/")
+    assert bundle_path.is_file()
+
+    with ZipFile(bundle_path) as bundle:
+        names = set(bundle.namelist())
+
+    assert "manifest.json" in names
+    assert "summary.md" in names
+    assert "run/run.json" in names
+    assert "reports/report.md" in names
 
 
 def test_cli_verify_returns_usage_error_for_missing_project(capsys) -> None:

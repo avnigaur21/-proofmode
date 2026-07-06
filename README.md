@@ -112,6 +112,22 @@ For machine-readable CI output:
 python -m app.cli verify --claim "Agent says login works" --project "ProofMode local" --json
 ```
 
+Evidence bundle export:
+
+```bash
+python -m app.cli verify \
+  --claim "Agent says login works" \
+  --project "ProofMode local" \
+  --bundle \
+  --bundle-path proofmode-evidence-bundle.zip
+```
+
+The evidence bundle is a ZIP audit package. It includes a manifest, summary, JSON run record, Markdown report, claim record, screenshots when available, API/DB snapshot evidence, Git diff evidence, evaluator verdict, and approval decision. Existing runs can also be downloaded from the backend:
+
+```bash
+curl -L http://localhost:8000/artifacts/bundles/<run-id> -o proofmode-evidence-bundle.zip
+```
+
 PR verification:
 
 ProofMode includes a starter GitHub Actions workflow at `.github/workflows/proofmode-pr.yml`.

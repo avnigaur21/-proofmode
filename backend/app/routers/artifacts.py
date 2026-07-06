@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 
 from app.services.artifacts import artifact_path
+from app.services.evidence_bundle import evidence_bundle_service
+from app.services.run_service import run_service
 
 router = APIRouter(prefix="/artifacts", tags=["artifacts"])
 
@@ -25,6 +27,17 @@ def snapshot(snapshot_type: str, filename: str) -> FileResponse:
         raise HTTPException(status_code=404, detail="Artifact not found")
 
     return _file_response("snapshots", snapshot_type, filename, media_type="application/json")
+
+
+@router.get("/bundles/{run_id}")
+def evidence_bundle(run_id: str) -> FileResponse:
+    run = run_service.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    artifact = evidence_bundle_service.export(run)
+    path = Path(artifact["path"])
+    return FileResponse(path=path, media_type="application/zip", filename=path.name)
 
 
 def _file_response(*parts: str, media_type: str) -> FileResponse:

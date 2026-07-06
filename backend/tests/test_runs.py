@@ -1,5 +1,6 @@
 import sqlite3
 import subprocess
+from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 
@@ -97,6 +98,48 @@ def test_claim_ingestion_creates_linked_run_from_project_profile(tmp_path) -> No
     assert report_response.status_code == 200
     assert "## Claim Source" in report_response.text
     assert "codex" in report_response.text
+
+
+def test_evidence_bundle_exports_audit_package(tmp_path) -> None:
+    repo_path = _empty_repo(tmp_path)
+    response = client.post(
+        "/claims/ingest",
+        json={
+            "claim": "Agent says profile page is complete",
+            "source": "codex",
+            "agent_name": "Codex",
+            "repo_path": str(repo_path),
+            "run_config": {
+                "ui_enabled": False,
+                "api_enabled": False,
+                "db_enabled": False,
+                "diff_enabled": True,
+                "planner_enabled": True,
+                "approval_required": True,
+            },
+        },
+    )
+    assert response.status_code == 200
+    run_id = response.json()["run"]["id"]
+
+    bundle_response = client.get(f"/artifacts/bundles/{run_id}")
+
+    assert bundle_response.status_code == 200
+    assert bundle_response.headers["content-type"] == "application/zip"
+
+    bundle_path = tmp_path / "bundle.zip"
+    bundle_path.write_bytes(bundle_response.content)
+
+    with ZipFile(bundle_path) as bundle:
+        names = set(bundle.namelist())
+        manifest = bundle.read("manifest.json").decode("utf-8")
+
+    assert "manifest.json" in names
+    assert "summary.md" in names
+    assert "run/run.json" in names
+    assert "reports/report.md" in names
+    assert any(name.startswith("claims/") and name.endswith(".json") for name in names)
+    assert "Agent says profile page is complete" in manifest
 
 
 def test_claim_ingestion_rejects_unknown_project() -> None:

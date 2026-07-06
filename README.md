@@ -94,13 +94,14 @@ You can also run without a saved project by passing the target evidence inputs d
 ```bash
 python -m app.cli verify \
   --claim "Agent says checkout flow is complete" \
+  --agent-report "I ran tests and verified the checkout API" \
   --checks diff \
   --repo-path C:\path\to\repo \
   --source ci \
   --agent-name Codex
 ```
 
-The CLI uses the same claim ingestion path as external tools. It stores the claim under `proofmode-runs/claims/`, creates a normal ProofMode run, writes the Markdown report, and exits with:
+The CLI uses the same claim ingestion path as external tools. It stores the claim under `proofmode-runs/claims/`, creates a normal ProofMode run, compares any agent self-report against executed evidence, writes the Markdown report, and exits with:
 
 - `0` when the run passes
 - `1` when ProofMode returns failed or uncertain evidence

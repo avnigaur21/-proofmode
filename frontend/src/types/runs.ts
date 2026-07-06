@@ -2,6 +2,7 @@ export type CheckStatus = "passed" | "failed" | "uncertain";
 export type RunStatus = "pending" | "running" | "passed" | "failed" | "uncertain";
 export type ApprovalDecision = "approved" | "rejected" | "fix_requested";
 export type EvidenceVerdict = "supported" | "contradicted" | "insufficient";
+export type SelfReportVerdict = "aligned" | "partially_unsupported" | "contradicted" | "not_provided";
 export type VerificationLayer = "ui" | "api" | "db" | "diff";
 export type TimelineLayer = "run" | "planner" | "evaluator" | VerificationLayer | "report";
 
@@ -81,6 +82,23 @@ export type EvidenceEvaluation = {
   model?: string | null;
 };
 
+export type SelfReportMismatch = {
+  topic: string;
+  severity: string;
+  agent_statement: string;
+  evidence_status: string;
+  explanation: string;
+};
+
+export type SelfReportComparison = {
+  verdict: SelfReportVerdict;
+  confidence: number;
+  summary: string;
+  detected_claims: string[];
+  mismatches: SelfReportMismatch[];
+  supported_statements: string[];
+};
+
 export type EvaluationRubricScore = {
   name: string;
   score: number;
@@ -93,6 +111,7 @@ export type ProofRun = {
   claim: string;
   status: RunStatus;
   created_at: string;
+  agent_report?: string | null;
   repo_path?: string | null;
   target_url?: string | null;
   api_base_url?: string | null;
@@ -102,6 +121,7 @@ export type ProofRun = {
   checklist: VerificationChecklist;
   checks: ProofCheck[];
   evaluation?: EvidenceEvaluation | null;
+  self_report_comparison?: SelfReportComparison | null;
   timeline: TimelineEvent[];
   approval?: ApprovalRecord | null;
   report_path?: string | null;
@@ -110,6 +130,7 @@ export type ProofRun = {
 
 export type ProofRunCreate = {
   claim: string;
+  agent_report?: string | null;
   repo_path?: string | null;
   target_url?: string | null;
   api_base_url?: string | null;

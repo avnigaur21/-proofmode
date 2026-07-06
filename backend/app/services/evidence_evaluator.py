@@ -98,6 +98,10 @@ class OpenAiEvidenceEvaluatorProvider:
                     "content": json.dumps(
                         {
                             "claim": run.claim,
+                            "agent_report": run.agent_report,
+                            "self_report_comparison": run.self_report_comparison.model_dump(mode="json")
+                            if run.self_report_comparison
+                            else None,
                             "checklist": [check.model_dump(mode="json") for check in run.checklist.checks],
                             "checks": [self._check_summary(check) for check in run.checks],
                             "required_output": {

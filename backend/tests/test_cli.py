@@ -53,6 +53,8 @@ def test_cli_verify_supports_json_output_and_direct_config(tmp_path, capsys) -> 
             "diff",
             "--source",
             "ci",
+            "--agent-report",
+            "I checked the Git diff and changed files.",
             "--json",
         ]
     )
@@ -63,6 +65,7 @@ def test_cli_verify_supports_json_output_and_direct_config(tmp_path, capsys) -> 
     assert exit_code == 0
     assert body["status"] == "passed"
     assert body["evaluation"]["verdict"] == "supported"
+    assert body["self_report_comparison"]["verdict"] == "aligned"
     assert body["checks"][0]["layer"] == "diff"
     assert body["report_path"]
 
@@ -82,6 +85,8 @@ def test_cli_verify_writes_pr_summary_and_uses_diff_range(tmp_path, capsys) -> N
             "diff",
             "--source",
             "github_pr",
+            "--agent-report",
+            "I ran tests and verified the API.",
             "--external-id",
             "pr-12",
             "--diff-base",
@@ -100,6 +105,7 @@ def test_cli_verify_writes_pr_summary_and_uses_diff_range(tmp_path, capsys) -> N
 
     assert exit_code == 0
     assert body["checks"][0]["evidence"]["diff_range"] == "HEAD~1...HEAD"
+    assert body["self_report_comparison"]["verdict"] == "partially_unsupported"
     assert body["checks"][0]["evidence"]["changed_files"][0]["path"] == "backend/app/routers/auth.py"
     assert "ProofMode PR Verification" in summary
     assert "**Status:** `passed`" in summary

@@ -42,7 +42,7 @@ body {
   color: var(--text-primary);
 }
 
-button, input, select {
+button, input, select, textarea {
   font: inherit;
 }
 
@@ -103,6 +103,27 @@ select {
 }
 
 select:focus {
+  border-color: var(--primary-accent);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15), inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+textarea {
+  width: 100%;
+  min-height: 82px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  resize: vertical;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+textarea:focus {
+  background: #ffffff;
   border-color: var(--primary-accent);
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15), inset 0 1px 2px rgba(0,0,0,0.05);
 }
@@ -1023,6 +1044,79 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: 999px;
+}
+
+.self-report-panel {
+  padding: 20px;
+  margin-bottom: 24px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.self-report-panel--empty {
+  background: #ffffff;
+}
+
+.agent-report-quote {
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--primary-accent);
+  border-radius: 8px;
+}
+
+.self-report-grid {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.18fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.self-report-mismatch-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.self-report-mismatch {
+  display: grid;
+  grid-template-columns: minmax(80px, 0.16fr) auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.self-report-mismatch strong {
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  text-transform: uppercase;
+}
+
+.self-report-mismatch code {
+  padding: 3px 7px;
+  color: var(--color-uncertain);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--bg-uncertain);
+  border: 1px solid rgba(217, 119, 6, 0.2);
+  border-radius: 999px;
+}
+
+.self-report-mismatch p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .config-chip {

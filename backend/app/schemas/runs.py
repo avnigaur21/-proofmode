@@ -33,6 +33,13 @@ class EvidenceVerdict(StrEnum):
     INSUFFICIENT = "insufficient"
 
 
+class SelfReportVerdict(StrEnum):
+    ALIGNED = "aligned"
+    PARTIALLY_UNSUPPORTED = "partially_unsupported"
+    CONTRADICTED = "contradicted"
+    NOT_PROVIDED = "not_provided"
+
+
 VerificationLayer = Literal["ui", "api", "db", "diff"]
 TimelineLayer = Literal["run", "planner", "evaluator", "ui", "api", "db", "diff", "report"]
 
@@ -84,6 +91,7 @@ class ClaimSourceMetadata(BaseModel):
 
 class ProofRunCreate(BaseModel):
     claim: str = Field(..., min_length=1)
+    agent_report: str | None = None
     repo_path: str | None = None
     target_url: str | None = None
     api_base_url: str | None = None
@@ -165,6 +173,23 @@ class EvidenceEvaluation(BaseModel):
     model: str | None = None
 
 
+class SelfReportMismatch(BaseModel):
+    topic: str
+    severity: str
+    agent_statement: str
+    evidence_status: str
+    explanation: str
+
+
+class SelfReportComparison(BaseModel):
+    verdict: SelfReportVerdict = SelfReportVerdict.NOT_PROVIDED
+    confidence: float = Field(ge=0, le=1, default=0)
+    summary: str = "No agent self-report was provided."
+    detected_claims: list[str] = Field(default_factory=list)
+    mismatches: list[SelfReportMismatch] = Field(default_factory=list)
+    supported_statements: list[str] = Field(default_factory=list)
+
+
 class TimelineEvent(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     type: str
@@ -193,3 +218,5 @@ class ProofRun(BaseModel):
     approval: ApprovalRecord | None = None
     report_path: str | None = None
     report_url: str | None = None
+    agent_report: str | None = None
+    self_report_comparison: SelfReportComparison | None = None

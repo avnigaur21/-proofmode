@@ -72,6 +72,7 @@ def test_claim_ingestion_creates_linked_run_from_project_profile(tmp_path) -> No
         "/claims/ingest",
         json={
             "claim": "Agent says login is complete",
+            "agent_report": "I changed the files and verified the diff.",
             "source": "codex",
             "agent_name": "Codex",
             "project_id": project["id"],
@@ -83,11 +84,14 @@ def test_claim_ingestion_creates_linked_run_from_project_profile(tmp_path) -> No
     assert response.status_code == 200
     body = response.json()
     assert body["claim_record"]["source"] == "codex"
+    assert body["claim_record"]["agent_report"] == "I changed the files and verified the diff."
     assert body["claim_record"]["agent_name"] == "Codex"
     assert body["claim_record"]["run_id"] == body["run"]["id"]
     assert body["run"]["claim_source"]["source"] == "codex"
     assert body["run"]["claim_source"]["agent_name"] == "Codex"
     assert body["run"]["claim_source"]["metadata"]["commit_sha"] == "abc123"
+    assert body["run"]["agent_report"] == "I changed the files and verified the diff."
+    assert body["run"]["self_report_comparison"]["verdict"] == "aligned"
     assert [check["layer"] for check in body["run"]["checks"]] == ["diff"]
 
     list_response = client.get("/claims")
@@ -98,6 +102,42 @@ def test_claim_ingestion_creates_linked_run_from_project_profile(tmp_path) -> No
     assert report_response.status_code == 200
     assert "## Claim Source" in report_response.text
     assert "codex" in report_response.text
+
+
+def test_self_report_comparison_flags_unverified_agent_claims(tmp_path) -> None:
+    repo_path = _empty_repo(tmp_path)
+    response = client.post(
+        "/claims/ingest",
+        json={
+            "claim": "Agent says login is complete",
+            "agent_report": "I ran tests, verified the UI click, checked the API, and completed the DB migration.",
+            "source": "cursor",
+            "agent_name": "Cursor",
+            "repo_path": str(repo_path),
+            "run_config": {
+                "ui_enabled": False,
+                "api_enabled": False,
+                "db_enabled": False,
+                "diff_enabled": True,
+                "planner_enabled": True,
+                "approval_required": True,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    run = response.json()["run"]
+    comparison = run["self_report_comparison"]
+
+    assert comparison["verdict"] == "partially_unsupported"
+    assert {"tests", "ui", "api", "db"}.issubset(set(comparison["detected_claims"]))
+    assert len(comparison["mismatches"]) >= 4
+    assert "self_report.compared" in [event["type"] for event in run["timeline"]]
+
+    report_response = client.get(run["report_url"])
+    assert report_response.status_code == 200
+    assert "Agent Report vs Evidence" in report_response.text
+    assert "not execute a UI check" in report_response.text
 
 
 def test_evidence_bundle_exports_audit_package(tmp_path) -> None:

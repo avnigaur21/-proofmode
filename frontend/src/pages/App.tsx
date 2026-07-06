@@ -36,6 +36,7 @@ import type { SettingsStatus } from "../types/settings";
 
 export function App() {
   const [claim, setClaim] = useState("I added the first ProofMode verification loop");
+  const [agentReport, setAgentReport] = useState("");
   const [targetUrl, setTargetUrl] = useState("http://localhost:5173");
   const [apiBaseUrl, setApiBaseUrl] = useState("http://localhost:8000/health");
   const [repoPath, setRepoPath] = useState("");
@@ -110,6 +111,7 @@ export function App() {
     try {
       const payload: ProofRunCreate = {
         claim,
+        agent_report: emptyToNull(agentReport),
         target_url: emptyToNull(targetUrl),
         api_base_url: emptyToNull(apiBaseUrl),
         repo_path: emptyToNull(repoPath),
@@ -370,6 +372,13 @@ export function App() {
               Verify
             </button>
           </div>
+          <label htmlFor="agent-report">Agent self-report</label>
+          <textarea
+            id="agent-report"
+            onChange={(event) => setAgentReport(event.target.value)}
+            placeholder="Optional: paste what the agent says it checked, tested, or verified"
+            value={agentReport}
+          />
           <section className="run-config-panel" aria-label="Proof run configuration">
             <div className="run-config-copy">
               <p className="config-label">Proof checks</p>
@@ -852,6 +861,7 @@ function filterRuns(runs: ProofRun[], query: string): ProofRun[] {
   return runs.filter((run) => {
     const searchable = [
       run.claim,
+      run.agent_report,
       run.id,
       run.status,
       run.claim_source?.source,

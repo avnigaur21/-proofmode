@@ -34,6 +34,7 @@ def _verify(args: argparse.Namespace) -> int:
         run_config = _run_config_from_args(args, project)
         payload = ClaimIngestionCreate(
             claim=args.claim,
+            agent_report=args.agent_report,
             source=args.source,
             agent_name=args.agent_name,
             project_id=project.id if project else None,
@@ -68,6 +69,9 @@ def _verify(args: argparse.Namespace) -> int:
                     "run_id": run.id,
                     "status": run.status,
                     "evaluation": run.evaluation.model_dump(mode="json") if run.evaluation else None,
+                    "self_report_comparison": run.self_report_comparison.model_dump(mode="json")
+                    if run.self_report_comparison
+                    else None,
                     "checks": [check.model_dump(mode="json") for check in run.checks],
                     "report_path": run.report_path,
                     "report_url": run.report_url,
@@ -101,6 +105,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     verify = subparsers.add_parser("verify", help="verify an agent completion claim")
     verify.add_argument("--claim", required=True, help="agent completion claim to verify")
+    verify.add_argument("--agent-report", help="optional agent self-report to compare against evidence")
     verify.add_argument("--project", help="saved project id or exact project name")
     verify.add_argument("--source", default="cli", help="claim source label")
     verify.add_argument("--agent-name", help="agent/tool that produced the claim")
@@ -265,6 +270,19 @@ def _to_pr_markdown(claim_id: str, run: ProofRun) -> str:
                 f"- Reason: {run.evaluation.explanation}",
             ]
         )
+
+    if run.self_report_comparison:
+        lines.extend(
+            [
+                "",
+                "### Agent Report vs Evidence",
+                f"- Verdict: `{run.self_report_comparison.verdict}`",
+                f"- Confidence: `{round(run.self_report_comparison.confidence * 100)}%`",
+                f"- Summary: {run.self_report_comparison.summary}",
+            ]
+        )
+        for mismatch in run.self_report_comparison.mismatches:
+            lines.append(f"- `{mismatch.topic}` `{mismatch.severity}` - {mismatch.explanation}")
 
     if run.checks:
         lines.extend(["", "### Proof Checks"])

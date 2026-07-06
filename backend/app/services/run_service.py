@@ -14,6 +14,7 @@ from app.services.evidence_evaluator import EvidenceEvaluator
 from app.services.planner import VerificationPlanner
 from app.services.report_generator import ReportGenerator
 from app.services.run_store import RunStore
+from app.services.self_report_comparator import SelfReportComparator
 from app.services.timeline import TimelineRecorder
 from app.verifiers.api_verifier import ApiVerifier
 from app.verifiers.db_verifier import DbVerifier
@@ -27,6 +28,7 @@ class RunService:
         self._runs: dict[str, ProofRun] = self._store.load_all()
         self._planner = VerificationPlanner()
         self._evaluator = EvidenceEvaluator()
+        self._self_report_comparator = SelfReportComparator()
         self._report_generator = ReportGenerator()
         self._timeline = TimelineRecorder()
         self._verifiers: list[tuple[VerificationLayer, object]] = [
@@ -45,6 +47,7 @@ class RunService:
             target_db_url=payload.target_db_url,
             run_config=payload.run_config,
             claim_source=payload.claim_source,
+            agent_report=payload.agent_report,
             status=RunStatus.RUNNING,
         )
         self._timeline.record(
@@ -60,6 +63,7 @@ class RunService:
                 "has_repo_path": bool(payload.repo_path),
                 "run_config": payload.run_config.model_dump(mode="json"),
                 "claim_source": payload.claim_source.model_dump(mode="json"),
+                "has_agent_report": bool(payload.agent_report),
             },
         )
 
@@ -119,6 +123,20 @@ class RunService:
             layer="run",
             status=run.status,
             metadata={"check_statuses": {check.layer: check.status for check in checks}},
+        )
+        run.self_report_comparison = self._self_report_comparator.compare(run)
+        self._timeline.record(
+            run,
+            "self_report.compared",
+            run.self_report_comparison.summary,
+            layer="evaluator",
+            status=run.self_report_comparison.verdict,
+            metadata={
+                "verdict": run.self_report_comparison.verdict,
+                "confidence": run.self_report_comparison.confidence,
+                "detected_claims": run.self_report_comparison.detected_claims,
+                "mismatch_count": len(run.self_report_comparison.mismatches),
+            },
         )
         run.evaluation = self._evaluator.evaluate(run)
         self._timeline.record(

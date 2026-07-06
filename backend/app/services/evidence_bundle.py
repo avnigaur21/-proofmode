@@ -73,6 +73,7 @@ class EvidenceBundleService:
             "claim": run.claim,
             "status": run.status,
             "evidence_verdict": run.evaluation.verdict if run.evaluation else None,
+            "self_report_verdict": run.self_report_comparison.verdict if run.self_report_comparison else None,
             "approval_decision": run.approval.decision if run.approval else None,
             "claim_source": run.claim_source.model_dump(mode="json"),
             "files": [
@@ -96,6 +97,9 @@ class EvidenceBundleService:
             f"- Agent: `{run.claim_source.agent_name or 'unspecified'}`",
         ]
 
+        if run.agent_report:
+            lines.extend(["", "## Agent Self-Report", run.agent_report])
+
         if run.evaluation:
             lines.extend(
                 [
@@ -104,6 +108,23 @@ class EvidenceBundleService:
                     f"- Evaluation: {run.evaluation.explanation}",
                 ]
             )
+
+        if run.self_report_comparison:
+            lines.extend(
+                [
+                    "",
+                    "## Agent Report vs Evidence",
+                    f"- Verdict: `{run.self_report_comparison.verdict}`",
+                    f"- Confidence: `{run.self_report_comparison.confidence:.2f}`",
+                    f"- Summary: {run.self_report_comparison.summary}",
+                ]
+            )
+            if run.self_report_comparison.mismatches:
+                lines.append("- Mismatches:")
+                lines.extend(
+                    f"  - `{mismatch.topic}` `{mismatch.severity}`: {mismatch.explanation}"
+                    for mismatch in run.self_report_comparison.mismatches
+                )
 
         if run.approval:
             lines.extend(

@@ -2,6 +2,7 @@ import type { ProofRun, RunConfiguration } from "./runs";
 
 export type ClaimIngestionCreate = {
   claim: string;
+  agent_report?: string | null;
   source?: string;
   agent_name?: string | null;
   project_id?: string | null;

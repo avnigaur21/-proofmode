@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   Clock3,
   Database,
+  FileWarning,
   FileText,
   GitCompare,
   GitBranch,
@@ -18,7 +19,15 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { artifactUrl, loadTextArtifact, recordApproval } from "../services/proofmodeApi";
-import type { ApprovalDecision, EvidenceEvaluation, ProofCheck, ProofRun, TimelineEvent, VerificationLayer } from "../types/runs";
+import type {
+  ApprovalDecision,
+  EvidenceEvaluation,
+  ProofCheck,
+  ProofRun,
+  SelfReportComparison,
+  TimelineEvent,
+  VerificationLayer,
+} from "../types/runs";
 import { MarkdownReport } from "./MarkdownReport";
 
 const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
@@ -117,6 +126,8 @@ export function RunDetail({
       <RunConfigurationSummary run={currentRun} />
 
       <ClaimSourcePanel run={currentRun} />
+
+      <SelfReportPanel comparison={currentRun.self_report_comparison} report={currentRun.agent_report} />
 
       <EvidenceEvaluationPanel evaluation={currentRun.evaluation} />
 
@@ -237,6 +248,77 @@ function ClaimSourceMetric({ label, value }: { label: string; value: string }) {
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function SelfReportPanel({
+  comparison,
+  report,
+}: {
+  comparison?: SelfReportComparison | null;
+  report?: string | null;
+}) {
+  if (!report && !comparison) {
+    return (
+      <section className="self-report-panel self-report-panel--empty">
+        <div className="section-title-row">
+          <FileWarning size={18} />
+          <h3>Agent Report vs Evidence</h3>
+        </div>
+        <p className="muted-text">No agent self-report was attached to this run.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="self-report-panel">
+      <div className="section-title-row">
+        <FileWarning size={18} />
+        <h3>Agent Report vs Evidence</h3>
+        {comparison ? (
+          <span className={`mini-status mini-status--${selfReportTone(comparison.verdict)}`}>
+            {comparison.verdict.replace("_", " ")}
+          </span>
+        ) : null}
+      </div>
+
+      {report ? <blockquote className="agent-report-quote">{report}</blockquote> : null}
+
+      {comparison ? (
+        <>
+          <div className="self-report-grid">
+            <div className={`evaluation-score evaluation-score--${selfReportTone(comparison.verdict)}`}>
+              <span>Confidence</span>
+              <strong>{Math.round(comparison.confidence * 100)}%</strong>
+            </div>
+            <div className="evaluation-explanation">
+              <span>comparison</span>
+              <p>{comparison.summary}</p>
+            </div>
+          </div>
+
+          {comparison.detected_claims.length > 0 ? (
+            <div className="claim-source-metadata">
+              {comparison.detected_claims.map((topic) => (
+                <code key={topic}>{topic}</code>
+              ))}
+            </div>
+          ) : null}
+
+          {comparison.mismatches.length > 0 ? (
+            <div className="self-report-mismatch-list">
+              {comparison.mismatches.map((mismatch) => (
+                <div className="self-report-mismatch" key={`${mismatch.topic}-${mismatch.explanation}`}>
+                  <strong>{mismatch.topic}</strong>
+                  <code>{mismatch.severity}</code>
+                  <p>{mismatch.explanation}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </section>
   );
 }
 
@@ -833,6 +915,18 @@ function approvalTone(decision: ApprovalDecision): "passed" | "failed" | "uncert
 
 function evaluationTone(verdict: string): "passed" | "failed" | "uncertain" {
   if (verdict === "supported") {
+    return "passed";
+  }
+
+  if (verdict === "contradicted") {
+    return "failed";
+  }
+
+  return "uncertain";
+}
+
+function selfReportTone(verdict: string): "passed" | "failed" | "uncertain" {
+  if (verdict === "aligned") {
     return "passed";
   }
 

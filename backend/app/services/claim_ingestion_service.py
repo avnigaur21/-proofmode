@@ -17,6 +17,7 @@ class ClaimIngestionService:
 
         run_payload = ProofRunCreate(
             claim=payload.claim,
+            agent_report=payload.agent_report,
             repo_path=self._first_defined(payload.repo_path, project.repo_path if project else None),
             target_url=self._first_defined(payload.target_url, project.target_url if project else None),
             api_base_url=self._first_defined(payload.api_base_url, project.api_base_url if project else None),
@@ -34,6 +35,7 @@ class ClaimIngestionService:
 
         claim_record = IngestedClaim(
             claim=payload.claim,
+            agent_report=payload.agent_report,
             source=payload.source,
             agent_name=payload.agent_name,
             project_id=payload.project_id,

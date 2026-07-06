@@ -9,6 +9,7 @@ from app.schemas.runs import ProofRun, RunConfiguration
 
 class ClaimIngestionCreate(BaseModel):
     claim: str = Field(..., min_length=1)
+    agent_report: str | None = None
     source: str = Field(default="manual", min_length=1)
     agent_name: str | None = None
     project_id: str | None = None
@@ -25,6 +26,7 @@ class ClaimIngestionCreate(BaseModel):
 class IngestedClaim(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     claim: str
+    agent_report: str | None = None
     source: str
     agent_name: str | None = None
     project_id: str | None = None

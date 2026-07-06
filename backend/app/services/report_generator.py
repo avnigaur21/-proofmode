@@ -32,6 +32,32 @@ class ReportGenerator:
                 f"  - `{key}`: `{value}`" for key, value in run.claim_source.metadata.items()
             )
 
+        if run.agent_report:
+            lines.extend(["", "## Agent Self-Report", run.agent_report])
+
+        if run.self_report_comparison:
+            lines.extend(
+                [
+                    "",
+                    "## Agent Report vs Evidence",
+                    f"- Verdict: `{run.self_report_comparison.verdict}`",
+                    f"- Confidence: `{run.self_report_comparison.confidence:.2f}`",
+                    f"- Summary: {run.self_report_comparison.summary}",
+                ]
+            )
+            if run.self_report_comparison.detected_claims:
+                lines.append("- Detected topics:")
+                lines.extend(f"  - `{topic}`" for topic in run.self_report_comparison.detected_claims)
+            if run.self_report_comparison.supported_statements:
+                lines.append("- Supported statements:")
+                lines.extend(f"  - {statement}" for statement in run.self_report_comparison.supported_statements)
+            if run.self_report_comparison.mismatches:
+                lines.append("- Mismatches:")
+                lines.extend(
+                    f"  - `{mismatch.topic}` `{mismatch.severity}`: {mismatch.explanation}"
+                    for mismatch in run.self_report_comparison.mismatches
+                )
+
         if run.approval:
             lines.extend(
                 [

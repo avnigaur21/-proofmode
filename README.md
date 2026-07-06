@@ -112,6 +112,21 @@ For machine-readable CI output:
 python -m app.cli verify --claim "Agent says login works" --project "ProofMode local" --json
 ```
 
+PR verification:
+
+ProofMode includes a starter GitHub Actions workflow at `.github/workflows/proofmode-pr.yml`.
+On every pull request, it:
+
+- checks out the PR branch with full Git history
+- runs `python -m app.cli verify` with `--source github_pr`
+- compares the PR range using `--diff-base origin/<base-branch> --diff-head HEAD`
+- writes a Markdown PR summary
+- uploads the JSON run record, claim record, snapshots, and report as artifacts
+- comments the ProofMode summary on the pull request
+- fails the GitHub check when ProofMode returns failed or uncertain evidence
+
+The first workflow version runs Git diff verification by default because it does not know how to boot every target app yet. UI, API, and DB verification can be added by starting services in the workflow and passing `--target-url`, `--api-base-url`, `--target-db-url`, and `--checks full`.
+
 Seed demo runs:
 
 ```bash

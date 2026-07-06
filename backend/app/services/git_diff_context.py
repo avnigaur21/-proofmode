@@ -28,7 +28,13 @@ class GitDiffContextService:
         self._max_total_patch_chars = max_total_patch_chars
         self._max_file_patch_chars = max_file_patch_chars
 
-    def build(self, repo_path_value: str | None) -> GitDiffContext | None:
+    def build(
+        self,
+        repo_path_value: str | None,
+        *,
+        diff_base: str | None = None,
+        diff_head: str | None = None,
+    ) -> GitDiffContext | None:
         if repo_path_value is None:
             return None
 
@@ -36,13 +42,14 @@ class GitDiffContextService:
         if not repo_path.exists() or not (repo_path / ".git").exists():
             return None
 
-        changed_files = self._changed_files(repo_path)
+        diff_range = self._diff_range(diff_base, diff_head)
+        changed_files = self._changed_files(repo_path, diff_range)
         remaining_budget = self._max_total_patch_chars
         file_contexts: list[DiffFileContext] = []
         was_truncated = False
 
         for path in changed_files:
-            patch = self._file_patch(repo_path, path)
+            patch = self._file_patch(repo_path, path, diff_range)
             additions, deletions = self._count_patch_lines(patch)
             truncated = False
 
@@ -79,7 +86,11 @@ class GitDiffContextService:
             truncated=was_truncated or len(file_contexts) < len(changed_files),
         )
 
-    def _changed_files(self, repo_path: Path) -> list[str]:
+    def _changed_files(self, repo_path: Path, diff_range: str | None) -> list[str]:
+        if diff_range:
+            output = self._git(repo_path, ["diff", "--name-only", diff_range])
+            return sorted(line.strip() for line in output.splitlines() if line.strip())
+
         names = set()
         for args in (
             ["diff", "--name-only"],
@@ -90,7 +101,10 @@ class GitDiffContextService:
             names.update(line.strip() for line in output.splitlines() if line.strip())
         return sorted(names)
 
-    def _file_patch(self, repo_path: Path, path: str) -> str:
+    def _file_patch(self, repo_path: Path, path: str, diff_range: str | None) -> str:
+        if diff_range:
+            return self._git(repo_path, ["diff", diff_range, "--", path])
+
         patch_parts = [
             self._git(repo_path, ["diff", "--", path]),
             self._git(repo_path, ["diff", "--cached", "--", path]),
@@ -130,3 +144,10 @@ class GitDiffContextService:
             text=True,
         )
         return result.stdout.strip()
+
+    def _diff_range(self, diff_base: str | None, diff_head: str | None) -> str | None:
+        if diff_base and diff_head:
+            return f"{diff_base}...{diff_head}"
+        if diff_base:
+            return diff_base
+        return None

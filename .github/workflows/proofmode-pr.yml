@@ -1,0 +1,134 @@
+name: ProofMode PR Verification
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      claim:
+        description: "Claim to verify"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  proofmode:
+    name: ProofMode
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run ProofMode
+        id: proofmode
+        working-directory: backend
+        shell: bash
+        run: |
+          set +e
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CLAIM="PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
+            EXTERNAL_ID="pr-${{ github.event.pull_request.number }}"
+            PR_URL="${{ github.event.pull_request.html_url }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            CLAIM="${{ github.event.inputs.claim }}"
+            if [ -z "$CLAIM" ]; then
+              CLAIM="Manual ProofMode workflow run"
+            fi
+            EXTERNAL_ID="workflow-${{ github.run_id }}"
+            PR_URL=""
+            HEAD_SHA="${{ github.sha }}"
+            BASE_REF="HEAD~1"
+          fi
+
+          python -m app.cli verify \
+            --claim "$CLAIM" \
+            --source github_pr \
+            --agent-name "${{ github.actor }}" \
+            --external-id "$EXTERNAL_ID" \
+            --metadata "pr_url=$PR_URL" \
+            --metadata "head_sha=$HEAD_SHA" \
+            --metadata "workflow_run=${{ github.run_id }}" \
+            --diff-base "$BASE_REF" \
+            --diff-head "HEAD" \
+            --checks diff \
+            --repo-path "$GITHUB_WORKSPACE" \
+            --summary-file ../proofmode-pr-summary.md \
+            --github-step-summary \
+            --json > ../proofmode-pr-result.json
+
+          PROOFMODE_EXIT=$?
+          echo "exit_code=$PROOFMODE_EXIT" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload ProofMode artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: proofmode-pr-report
+          path: |
+            proofmode-pr-summary.md
+            proofmode-pr-result.json
+            backend/proofmode-runs/reports/*.md
+            backend/proofmode-runs/runs/*.json
+            backend/proofmode-runs/claims/*.json
+            backend/proofmode-runs/snapshots/**/*.json
+
+      - name: Comment ProofMode report on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- proofmode-pr-verification -->";
+            const summary = fs.readFileSync("proofmode-pr-summary.md", "utf8");
+            const body = `${marker}\n${summary}`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.data.find((comment) =>
+              comment.user.type === "Bot" && comment.body.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+
+      - name: Enforce ProofMode verdict
+        if: steps.proofmode.outputs.exit_code != '0'
+        run: |
+          echo "ProofMode did not pass. See the PR comment and uploaded artifacts for evidence."
+          exit 1

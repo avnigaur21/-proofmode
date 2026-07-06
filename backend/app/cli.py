@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import sys
 from typing import Sequence
 
@@ -7,7 +8,7 @@ from pydantic import ValidationError
 
 from app.schemas.claims import ClaimIngestionCreate
 from app.schemas.projects import ProjectProfile
-from app.schemas.runs import RunConfiguration
+from app.schemas.runs import ProofRun, RunConfiguration
 from app.services.claim_ingestion_service import claim_ingestion_service
 from app.services.project_service import project_service
 
@@ -36,7 +37,7 @@ def _verify(args: argparse.Namespace) -> int:
             agent_name=args.agent_name,
             project_id=project.id if project else None,
             external_id=args.external_id,
-            metadata=_metadata_from_args(args.metadata),
+            metadata=_metadata_from_args(args),
             repo_path=args.repo_path,
             target_url=args.target_url,
             api_base_url=args.api_base_url,
@@ -63,6 +64,7 @@ def _verify(args: argparse.Namespace) -> int:
                     "run_id": run.id,
                     "status": run.status,
                     "evaluation": run.evaluation.model_dump(mode="json") if run.evaluation else None,
+                    "checks": [check.model_dump(mode="json") for check in run.checks],
                     "report_path": run.report_path,
                     "report_url": run.report_url,
                 },
@@ -71,6 +73,12 @@ def _verify(args: argparse.Namespace) -> int:
         )
     else:
         _print_run_summary(result.claim_record.id, run)
+
+    if args.summary_file:
+        _write_summary_file(args.summary_file, result.claim_record.id, run)
+
+    if args.github_step_summary:
+        _append_github_step_summary(result.claim_record.id, run)
 
     return 0 if str(run.status) == "passed" else 1
 
@@ -89,6 +97,8 @@ def _build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--agent-name", help="agent/tool that produced the claim")
     verify.add_argument("--external-id", help="external commit, PR, job, or task id")
     verify.add_argument("--metadata", action="append", default=[], help="metadata as key=value; repeatable")
+    verify.add_argument("--diff-base", help="base ref for PR/CI diff analysis, for example origin/main")
+    verify.add_argument("--diff-head", help="head ref for PR/CI diff analysis, for example HEAD")
     verify.add_argument("--repo-path", help="repository path for Git diff verification")
     verify.add_argument("--target-url", help="target app URL for UI verification")
     verify.add_argument("--api-base-url", help="API URL for contract verification")
@@ -100,6 +110,12 @@ def _build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--no-planner", action="store_true", help="disable checklist planner")
     verify.add_argument("--no-approval", action="store_true", help="mark human approval as not required")
     verify.add_argument("--json", action="store_true", help="print machine-readable JSON output")
+    verify.add_argument("--summary-file", help="write a PR-friendly Markdown summary to this path")
+    verify.add_argument(
+        "--github-step-summary",
+        action="store_true",
+        help="append the Markdown summary to GITHUB_STEP_SUMMARY when available",
+    )
     verify.add_argument(
         "--capture-argv",
         action="store_true",
@@ -162,10 +178,10 @@ def _layers_from_config(config: RunConfiguration) -> set[str]:
     return {layer for layer in CHECK_LAYERS if config.is_layer_enabled(layer)}
 
 
-def _metadata_from_args(metadata_items: list[str]) -> dict[str, str]:
+def _metadata_from_args(args: argparse.Namespace) -> dict[str, str]:
     metadata: dict[str, str] = {}
 
-    for item in metadata_items:
+    for item in args.metadata:
         if "=" not in item:
             raise ValueError(f"Metadata must use key=value format: {item}")
         key, value = item.split("=", 1)
@@ -173,6 +189,11 @@ def _metadata_from_args(metadata_items: list[str]) -> dict[str, str]:
         if not key:
             raise ValueError("Metadata key cannot be blank")
         metadata[key] = value.strip()
+
+    if args.diff_base:
+        metadata["diff_base"] = args.diff_base
+    if args.diff_head:
+        metadata["diff_head"] = args.diff_head
 
     return metadata
 
@@ -190,6 +211,53 @@ def _print_run_summary(claim_id: str, run) -> None:
 
     if run.report_path:
         print(f"Report: {run.report_path}")
+
+
+def _write_summary_file(path: str, claim_id: str, run: ProofRun) -> None:
+    with open(path, "w", encoding="utf-8") as summary_file:
+        summary_file.write(_to_pr_markdown(claim_id, run))
+
+
+def _append_github_step_summary(claim_id: str, run: ProofRun) -> None:
+    summary_path = os.getenv("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+
+    with open(summary_path, "a", encoding="utf-8") as summary_file:
+        summary_file.write(_to_pr_markdown(claim_id, run))
+        summary_file.write("\n")
+
+
+def _to_pr_markdown(claim_id: str, run: ProofRun) -> str:
+    lines = [
+        "## ProofMode PR Verification",
+        "",
+        f"**Claim:** {run.claim}",
+        f"**Status:** `{run.status}`",
+        f"**Claim record:** `{claim_id}`",
+        f"**Run:** `{run.id}`",
+    ]
+
+    if run.evaluation:
+        lines.extend(
+            [
+                "",
+                "### Evidence Verdict",
+                f"- Verdict: `{run.evaluation.verdict}`",
+                f"- Confidence: `{round(run.evaluation.confidence * 100)}%`",
+                f"- Reason: {run.evaluation.explanation}",
+            ]
+        )
+
+    if run.checks:
+        lines.extend(["", "### Proof Checks"])
+        for check in run.checks:
+            lines.append(f"- **{check.layer.upper()}** `{check.status}` - {check.summary}")
+
+    if run.report_path:
+        lines.extend(["", f"Full report artifact: `{run.report_path}`"])
+
+    return "\n".join(lines) + "\n"
 
 
 if __name__ == "__main__":

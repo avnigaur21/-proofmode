@@ -40,8 +40,9 @@ class DiffVerifier:
             )
 
         try:
-            changed_files = self._changed_files(repo_path)
-            diff_stats = self._diff_stats(repo_path)
+            diff_range = self._diff_range(run)
+            changed_files = self._changed_files(repo_path, diff_range)
+            diff_stats = self._diff_stats(repo_path, diff_range)
         except Exception as error:
             return ProofCheck(
                 layer=self.layer,
@@ -59,6 +60,7 @@ class DiffVerifier:
             run.id,
             {
                 "repo_path": str(repo_path),
+                "diff_range": diff_range,
                 "changed_files": classified_files,
                 "category_summary": category_summary,
                 "recommended_layers": recommended,
@@ -74,6 +76,7 @@ class DiffVerifier:
                 summary="No uncommitted Git changes were detected.",
                 evidence={
                     "repo_path": str(repo_path),
+                    "diff_range": diff_range,
                     "changed_files": [],
                     "category_summary": category_summary,
                     "recommended_layers": recommended,
@@ -88,6 +91,7 @@ class DiffVerifier:
             summary=f"Detected {len(changed_files)} changed file(s) and recommended proof layers.",
             evidence={
                 "repo_path": str(repo_path),
+                "diff_range": diff_range,
                 "changed_files": classified_files,
                 "category_summary": category_summary,
                 "recommended_layers": recommended,
@@ -97,7 +101,11 @@ class DiffVerifier:
             },
         )
 
-    def _changed_files(self, repo_path: Path) -> list[str]:
+    def _changed_files(self, repo_path: Path, diff_range: str | None) -> list[str]:
+        if diff_range:
+            output = self._git(repo_path, ["diff", "--name-only", diff_range])
+            return sorted(line.strip() for line in output.splitlines() if line.strip())
+
         names = set()
 
         for args in (
@@ -110,11 +118,28 @@ class DiffVerifier:
 
         return sorted(names)
 
-    def _diff_stats(self, repo_path: Path) -> dict[str, object]:
+    def _diff_stats(self, repo_path: Path, diff_range: str | None) -> dict[str, object]:
+        if diff_range:
+            return {
+                "range": diff_range,
+                "summary": self._git(repo_path, ["diff", "--stat", diff_range]),
+            }
+
         return {
             "unstaged": self._git(repo_path, ["diff", "--stat"]),
             "staged": self._git(repo_path, ["diff", "--cached", "--stat"]),
         }
+
+    def _diff_range(self, run: ProofRun) -> str | None:
+        metadata = run.claim_source.metadata if run.claim_source else {}
+        base = metadata.get("diff_base")
+        head = metadata.get("diff_head")
+
+        if isinstance(base, str) and isinstance(head, str) and base and head:
+            return f"{base}...{head}"
+        if isinstance(base, str) and base:
+            return base
+        return None
 
     def _git(self, repo_path: Path, args: list[str]) -> str:
         result = subprocess.run(

@@ -24,7 +24,11 @@ class VerificationPlanner:
         return self._create_deterministic_checklist(run)
 
     def _create_llm_checklist(self, run: ProofRun) -> VerificationChecklist:
-        diff_context = self._diff_context_service.build(run.repo_path)
+        diff_context = self._diff_context_service.build(
+            run.repo_path,
+            diff_base=self._metadata_string(run, "diff_base"),
+            diff_head=self._metadata_string(run, "diff_head"),
+        )
         llm_result = self._llm_planner.create_checklist(run.claim, diff_context)
         if llm_result.checklist is not None:
             return self._ensure_diff_check(llm_result.checklist, run)
@@ -156,3 +160,7 @@ class VerificationPlanner:
         if "://" not in url:
             return url
         return "/" + url.split("://", 1)[1].split("/", 1)[1] if "/" in url.split("://", 1)[1] else ""
+
+    def _metadata_string(self, run: ProofRun, key: str) -> str | None:
+        value = run.claim_source.metadata.get(key) if run.claim_source else None
+        return value if isinstance(value, str) else None

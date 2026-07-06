@@ -62,7 +62,47 @@ def test_cli_verify_supports_json_output_and_direct_config(tmp_path, capsys) -> 
     assert exit_code == 0
     assert body["status"] == "passed"
     assert body["evaluation"]["verdict"] == "supported"
+    assert body["checks"][0]["layer"] == "diff"
     assert body["report_path"]
+
+
+def test_cli_verify_writes_pr_summary_and_uses_diff_range(tmp_path, capsys) -> None:
+    repo_path = _repo_with_committed_change(tmp_path)
+    summary_path = tmp_path / "proofmode-pr-summary.md"
+
+    exit_code = main(
+        [
+            "verify",
+            "--claim",
+            "PR adds an auth route",
+            "--repo-path",
+            str(repo_path),
+            "--checks",
+            "diff",
+            "--source",
+            "github_pr",
+            "--external-id",
+            "pr-12",
+            "--diff-base",
+            "HEAD~1",
+            "--diff-head",
+            "HEAD",
+            "--summary-file",
+            str(summary_path),
+            "--json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    body = json.loads(captured.out)
+    summary = summary_path.read_text(encoding="utf-8")
+
+    assert exit_code == 0
+    assert body["checks"][0]["evidence"]["diff_range"] == "HEAD~1...HEAD"
+    assert body["checks"][0]["evidence"]["changed_files"][0]["path"] == "backend/app/routers/auth.py"
+    assert "ProofMode PR Verification" in summary
+    assert "**Status:** `passed`" in summary
+    assert "**DIFF** `passed`" in summary
 
 
 def test_cli_verify_returns_usage_error_for_missing_project(capsys) -> None:
@@ -106,6 +146,21 @@ def _empty_repo(tmp_path):
     _git(repo_path, "init")
     _git(repo_path, "config", "user.name", "ProofMode Test")
     _git(repo_path, "config", "user.email", "proofmode@example.com")
+    return repo_path
+
+
+def _repo_with_committed_change(tmp_path):
+    repo_path = _empty_repo(tmp_path)
+    readme_path = repo_path / "README.md"
+    readme_path.write_text("# Demo\n", encoding="utf-8")
+    _git(repo_path, "add", "README.md")
+    _git(repo_path, "commit", "-m", "Initial commit")
+
+    auth_path = repo_path / "backend" / "app" / "routers" / "auth.py"
+    auth_path.parent.mkdir(parents=True)
+    auth_path.write_text("def login():\n    return {'ok': True}\n", encoding="utf-8")
+    _git(repo_path, "add", "backend/app/routers/auth.py")
+    _git(repo_path, "commit", "-m", "Add auth route")
     return repo_path
 
 

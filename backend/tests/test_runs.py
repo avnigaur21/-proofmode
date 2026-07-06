@@ -29,6 +29,8 @@ def test_create_run_returns_structured_report(tmp_path) -> None:
     assert len(body["timeline"]) >= 8
     assert body["timeline"][0]["type"] == "run.created"
     assert body["timeline"][-1]["type"] == "run.completed"
+    evaluator_event = next(event for event in body["timeline"] if event["type"] == "evaluator.completed")
+    assert len(evaluator_event["metadata"]["rubrics"]) >= 6
     assert body["report_url"].startswith("/artifacts/reports/")
 
     report_response = client.get(body["report_url"])

@@ -130,6 +130,7 @@ class RunService:
                 "verdict": run.evaluation.verdict,
                 "evaluator_mode": run.evaluation.evaluator_mode,
                 "guardrails": run.evaluation.guardrails,
+                "rubrics": [rubric.model_dump(mode="json") for rubric in run.evaluation.rubrics],
             },
         )
         report_artifact = self._report_generator.artifact_for(run)

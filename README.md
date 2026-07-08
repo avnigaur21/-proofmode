@@ -1,44 +1,77 @@
 # ProofMode
 
-ProofMode is an AI agent verification layer. It intercepts a "task complete" claim and demands proof across UI behavior, API contracts, data state, and code diffs before the claim is treated as true.
+ProofMode is an agent-agnostic verification layer for AI coding agents. It takes an AI agent's "task complete" claim, runs independent proof checks across UI, API, database state, Git diff evidence, and agent self-report consistency, then produces an auditable verdict before the work is accepted.
 
-This repository starts with the smallest useful version of that idea:
+ProofMode is not just a test runner. It is a post-execution proof layer that asks:
 
-- a FastAPI backend that accepts verification runs
-- a React + Vite dashboard that displays run status
-- verifier modules for UI, API, DB, and Git diff checks
-- an approval gate for accepting, rejecting, or requesting fixes after review
-- demo scenarios for ghost completion, contract drift, and state blindness
-- a planner that can use Git diff context to generate targeted verification checklists
-- a report shape that can grow into screenshots, logs, response diffs, and database evidence
+```txt
+What did the agent claim?
+What evidence did ProofMode collect?
+Does the evidence support, contradict, or only partially support the claim?
+Should a human approve this run?
+```
 
-The DB verifier is database-URL based. SQLite works as the first local implementation target, and PostgreSQL support can use the same `target_db_url` contract.
+## Current Status
 
-The Git diff verifier is repository-path based. Provide `repo_path` to let ProofMode classify changed files and recommend which proof layers should run.
+ProofMode currently includes:
 
-Run records are persisted as JSON under `proofmode-runs/runs/`, while screenshots, reports, and snapshots are stored in sibling artifact folders. Each run record includes an agent behavior timeline so local verification history remains available after backend restarts and can be inspected later.
+- FastAPI backend for proof runs, claims, project profiles, artifacts, settings, and approvals
+- React + Vite dashboard for run review, saved project profiles, evidence timelines, screenshots, reports, approval gates, and run comparison
+- Agent-agnostic claim ingestion through `POST /claims/ingest`
+- CLI/CI mode through `python -m app.cli verify`
+- GitHub PR verification workflow through `.github/workflows/proofmode-pr.yml`
+- Evidence bundle export as a ZIP audit package
+- Playwright UI verifier with screenshots, console errors, page errors, and network failures
+- HTTP API verifier with schema snapshots and contract drift detection
+- SQLAlchemy DB verifier with schema and row-count snapshots
+- Git diff verifier with changed-file classification and PR diff range support
+- Verification planner with deterministic mode, optional LLM mode, and deterministic fallback
+- Guarded evidence evaluator with supported, contradicted, and insufficient verdicts
+- Agent self-report comparison against executed evidence
+- Markdown report generation and persisted JSON run records
 
-## First Checkpoint
+## Core Workflow
 
-The first checkpoint is intentionally simple. We are not trying to solve every verification problem yet. We are creating the stable bones of the product:
-
-1. Submit a claim.
-2. Create a ProofMode run.
-3. Run placeholder verifiers.
-4. Store a structured run record with timeline events.
-5. Display runs in the frontend dashboard.
-6. Record the human approval decision.
+```txt
+Agent, CLI, CI, PR, or dashboard submits a claim
+        |
+        v
+ProofMode normalizes the claim and source metadata
+        |
+        v
+Planner creates a targeted checklist
+        |
+        v
+UI / API / DB / Git diff checks run
+        |
+        v
+Evidence evaluator assigns a guarded verdict
+        |
+        v
+Agent self-report is compared against evidence
+        |
+        v
+Markdown report, JSON records, timeline, and evidence bundle are saved
+        |
+        v
+Human reviewer approves, rejects, or requests fixes
+```
 
 ## Project Structure
 
 ```txt
 backend/
   app/
+    cli.py
     main.py
-    database.py
     routers/
+      artifacts.py
+      claims.py
+      demo.py
+      projects.py
+      runs.py
+      settings.py
     schemas/
-    models/
     services/
     verifiers/
   tests/
@@ -50,14 +83,21 @@ frontend/
     services/
     types/
 
-proofmode-runs/
-  runs/
-  reports/
-  screenshots/
-  logs/
+.github/
+  workflows/
+    proofmode-pr.yml
 
-docker-compose.yml
+proofmode-runs/
+  bundles/
+  claims/
+  projects/
+  reports/
+  runs/
+  screenshots/
+  snapshots/
 ```
+
+Generated run data under `proofmode-runs/` is ignored by git except for `.gitkeep` placeholders.
 
 ## Local Development
 
@@ -72,7 +112,25 @@ playwright install chromium
 uvicorn app.main:app --reload
 ```
 
-Use Python 3.12 for the backend environment. Some pinned native dependencies do not yet have reliable wheels for Python 3.14.
+On Windows PowerShell:
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+playwright install chromium
+uvicorn app.main:app --reload
+```
+
+Use Python 3.12 for the backend environment.
+
+Frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 Backend tests:
 
@@ -82,14 +140,75 @@ pip install -r requirements-dev.txt
 pytest tests
 ```
 
-CLI verification:
+Frontend build:
+
+```bash
+cd frontend
+npm run build
+```
+
+Docker:
+
+```bash
+docker compose up --build
+```
+
+## Dashboard
+
+The dashboard supports:
+
+- creating proof runs from a task completion claim
+- optional agent self-report input
+- saved project profiles
+- configurable proof checks and run presets
+- run list search and show-more behavior
+- run detail view with claim intake metadata
+- evidence evaluation panel
+- agent report vs evidence panel
+- run-to-run comparison
+- approval gate
+- planner explainability
+- UI/API/DB/Git evidence sections
+- behavior timeline
+- rendered Markdown report
+
+## Claim Ingestion
+
+ProofMode can accept claims from any source:
+
+```http
+POST /claims/ingest
+```
+
+Example:
+
+```json
+{
+  "claim": "Agent says login is complete",
+  "agent_report": "I ran tests and verified the login UI.",
+  "source": "codex",
+  "agent_name": "Codex",
+  "project_id": "saved-project-id",
+  "external_id": "commit-abc123",
+  "metadata": {
+    "commit_sha": "abc123",
+    "branch": "main"
+  }
+}
+```
+
+ProofMode stores the original claim record under `proofmode-runs/claims/` and links it to a normal proof run.
+
+## CLI / CI Mode
+
+Run ProofMode from the terminal:
 
 ```bash
 cd backend
 python -m app.cli verify --claim "Agent says login is complete" --project "ProofMode local"
 ```
 
-You can also run without a saved project by passing the target evidence inputs directly:
+Run without a saved project:
 
 ```bash
 python -m app.cli verify \
@@ -101,19 +220,48 @@ python -m app.cli verify \
   --agent-name Codex
 ```
 
-The CLI uses the same claim ingestion path as external tools. It stores the claim under `proofmode-runs/claims/`, creates a normal ProofMode run, compares any agent self-report against executed evidence, writes the Markdown report, and exits with:
+Exit codes:
 
-- `0` when the run passes
-- `1` when ProofMode returns failed or uncertain evidence
-- `2` for CLI/setup errors such as an unknown project or invalid metadata
+- `0`: ProofMode passed
+- `1`: ProofMode returned failed or uncertain evidence
+- `2`: CLI/setup error
 
-For machine-readable CI output:
+Machine-readable output:
 
 ```bash
 python -m app.cli verify --claim "Agent says login works" --project "ProofMode local" --json
 ```
 
-Evidence bundle export:
+## GitHub PR Integration
+
+ProofMode includes a starter GitHub Actions workflow:
+
+```txt
+.github/workflows/proofmode-pr.yml
+```
+
+On pull requests, it:
+
+- checks out the PR branch with full Git history
+- runs ProofMode through the CLI
+- compares the PR range with `--diff-base origin/<base-branch> --diff-head HEAD`
+- writes a Markdown PR summary
+- uploads JSON records, snapshots, reports, and evidence bundle artifacts
+- comments the ProofMode summary on the PR
+- fails the GitHub check when ProofMode returns failed or uncertain evidence
+
+The workflow currently runs Git diff verification by default. Full UI/API/DB verification can be enabled by starting the target services in the workflow and passing:
+
+```bash
+--target-url ...
+--api-base-url ...
+--target-db-url ...
+--checks full
+```
+
+## Evidence Bundle Export
+
+Export a portable ZIP audit package:
 
 ```bash
 python -m app.cli verify \
@@ -123,56 +271,95 @@ python -m app.cli verify \
   --bundle-path proofmode-evidence-bundle.zip
 ```
 
-The evidence bundle is a ZIP audit package. It includes a manifest, summary, JSON run record, Markdown report, claim record, screenshots when available, API/DB snapshot evidence, Git diff evidence, evaluator verdict, and approval decision. Existing runs can also be downloaded from the backend:
+Download an existing run's bundle:
 
 ```bash
 curl -L http://localhost:8000/artifacts/bundles/<run-id> -o proofmode-evidence-bundle.zip
 ```
 
-PR verification:
+The bundle includes:
 
-ProofMode includes a starter GitHub Actions workflow at `.github/workflows/proofmode-pr.yml`.
-On every pull request, it:
+- `manifest.json`
+- `summary.md`
+- JSON run record
+- Markdown report
+- claim record
+- screenshots when available
+- API/DB snapshot evidence
+- Git diff evidence
+- evaluator verdict
+- self-report comparison
+- approval decision when recorded
 
-- checks out the PR branch with full Git history
-- runs `python -m app.cli verify` with `--source github_pr`
-- compares the PR range using `--diff-base origin/<base-branch> --diff-head HEAD`
-- writes a Markdown PR summary
-- uploads the JSON run record, claim record, snapshots, and report as artifacts
-- comments the ProofMode summary on the pull request
-- fails the GitHub check when ProofMode returns failed or uncertain evidence
+## Agent Self-Report Comparison
 
-The first workflow version runs Git diff verification by default because it does not know how to boot every target app yet. UI, API, and DB verification can be added by starting services in the workflow and passing `--target-url`, `--api-base-url`, `--target-db-url`, and `--checks full`.
+ProofMode can compare what the agent says it did against what ProofMode actually verified.
 
-Seed demo runs:
+Example:
 
-```bash
-curl -X POST http://localhost:8000/demo/seed
+```txt
+Agent report:
+"I ran tests, verified the UI click, checked the API, and completed the DB migration."
+
+ProofMode evidence:
+Git diff passed.
+UI was not checked.
+API was not checked.
+DB was not checked.
+Test evidence is not captured yet.
+
+Self-report verdict:
+partially_unsupported
 ```
 
-The dashboard also exposes a **Seed Demo Runs** button. It creates three walkthrough runs that show ghost completion, contract drift, and state blindness using persisted JSON run records and reports.
+Supported comparison verdicts:
 
-Frontend:
+- `aligned`
+- `partially_unsupported`
+- `contradicted`
+- `not_provided`
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## Verification Layers
 
-Docker:
+UI verification:
 
-```bash
-docker compose up --build
-```
+- launches Chromium through Playwright
+- captures screenshots
+- captures console errors
+- captures page errors
+- captures failed network requests
+- supports targeted assertions like text, selector, visibility, and URL checks
 
-Planner mode:
+API verification:
 
-```bash
-PROOFMODE_PLANNER_MODE=llm
-```
+- calls configured HTTP endpoints
+- records status codes and JSON shape
+- snapshots response schemas
+- detects dropped, renamed, or type-changed fields
+- supports targeted assertions for method, path, expected status, and required fields
 
-The LLM planner path uses a local heuristic provider by default, which lets the planner consume Git diff context without requiring API keys. To call OpenAI through the provider abstraction:
+DB verification:
+
+- connects through SQLAlchemy
+- snapshots tables, columns, column types, and row counts
+- compares later runs against previous snapshots
+- supports targeted assertions for table, column, and row-count delta
+
+Git diff verification:
+
+- classifies changed files as UI, API, DB, logic, or unknown
+- recommends proof layers based on changed files
+- supports local uncommitted changes
+- supports PR/CI diff ranges through `--diff-base` and `--diff-head`
+
+## Planner And Evaluator
+
+Planner modes:
+
+- deterministic planner by default
+- optional LLM planner with deterministic fallback
+
+LLM planner configuration:
 
 ```bash
 PROOFMODE_PLANNER_MODE=llm
@@ -181,8 +368,13 @@ PROOFMODE_LLM_MODEL=gpt-4.1-mini
 OPENAI_API_KEY=...
 ```
 
-If provider output is invalid or unavailable, ProofMode falls back to the deterministic checklist and records that fallback in the run timeline.
-The dashboard also shows a Planner Explainability panel for each run, including provider, model, diff files read, truncation, fallback status, and influenced files.
+Evaluator behavior:
+
+- returns `supported`, `contradicted`, or `insufficient`
+- cannot override deterministic verifier failures
+- treats uncertain checks as insufficient evidence
+- records confidence, reasons, guardrails, and rubric scores
+- optional LLM evaluator can run only after deterministic checks are clean
 
 Runtime status:
 
@@ -190,25 +382,52 @@ Runtime status:
 curl http://localhost:8000/settings/status
 ```
 
-The dashboard shows this as compact status chips for backend connectivity, planner mode, LLM provider, API key presence, and run persistence.
+## Demo Runs
 
-Targeted check assertions:
+Seed walkthrough runs:
 
-Planned checks may include an `assertions` object. Verifiers use this to run more specific checks:
+```bash
+curl -X POST http://localhost:8000/demo/seed
+```
 
-- API: `method`, `path`, `expected_status`, `required_fields`
-- UI: `text`, `selector`, `visible`, `url_contains`
-- DB: `table`, `column`, `expected_row_delta`
+The dashboard also exposes a **Seed Demo Runs** button. Demo runs cover:
 
-## MVP Roadmap
+- ghost completion
+- contract drift
+- state blindness
 
-- Checkpoint 1: Project skeleton and proof report contract
-- Checkpoint 2: Playwright UI verifier with screenshots and console/network errors
-- Checkpoint 3: HTTP API contract verifier
-- Checkpoint 4: Database state verifier
-- Checkpoint 5: Git diff analyzer and verification planner
-- Checkpoint 6: Polished report dashboard
+## API Reference
 
-See `docs/ROADMAP.md` for the merged roadmap we are using, including the product structure inspired by the additional architecture plan.
+Main endpoints:
 
-See `docs/CHECKPOINTS.md` for the detailed 16-checkpoint implementation guide.
+- `GET /health`
+- `POST /runs`
+- `GET /runs`
+- `GET /runs/{run_id}`
+- `POST /runs/{run_id}/approval`
+- `POST /claims/ingest`
+- `GET /claims`
+- `POST /projects`
+- `GET /projects`
+- `PATCH /projects/{project_id}`
+- `DELETE /projects/{project_id}`
+- `GET /settings/status`
+- `POST /demo/seed`
+- `GET /artifacts/reports/{filename}`
+- `GET /artifacts/screenshots/{filename}`
+- `GET /artifacts/snapshots/{snapshot_type}/{filename}`
+- `GET /artifacts/bundles/{run_id}`
+
+## Roadmap
+
+Near-term improvements:
+
+- capture actual test command evidence
+- add richer PR configuration for full UI/API/DB workflows
+- add dashboard download button for evidence bundles
+- add PDF export for evidence bundles
+- add stronger semantic self-report parsing
+- add project-level verification policies
+- add signed or hashed audit manifests
+
+See `docs/ROADMAP.md` and `docs/CHECKPOINTS.md` for the original roadmap and checkpoint plan.

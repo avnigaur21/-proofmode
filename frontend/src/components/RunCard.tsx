@@ -1,4 +1,4 @@
-import { AlertTriangle, Bot, CheckCircle2, CircleHelp, Database, GitBranch, Globe2, MonitorCheck } from "lucide-react";
+import { AlertTriangle, Bot, CheckCircle2, CircleHelp, Database, GitBranch, Globe2, ListChecks, MonitorCheck } from "lucide-react";
 import type { ProofRun, VerificationLayer } from "../types/runs";
 
 const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
@@ -6,6 +6,7 @@ const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
   api: Globe2,
   db: Database,
   diff: GitBranch,
+  tests: ListChecks,
 };
 
 export function RunCard({

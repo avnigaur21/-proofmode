@@ -26,6 +26,7 @@ ProofMode currently includes:
 - HTTP API verifier with schema snapshots and contract drift detection
 - SQLAlchemy DB verifier with schema and row-count snapshots
 - Git diff verifier with changed-file classification and PR diff range support
+- Test command verifier with captured exit codes, stdout, stderr, duration, and timeout handling
 - Verification planner with deterministic mode, optional LLM mode, and deterministic fallback
 - Guarded evidence evaluator with supported, contradicted, and insufficient verdicts
 - Agent self-report comparison against executed evidence
@@ -164,6 +165,7 @@ The dashboard supports:
 - optional agent self-report input
 - saved project profiles
 - reusable project API checks and UI flow checks
+- reusable project test commands
 - configurable proof checks and run presets
 - run list search and show-more behavior
 - run detail view with claim intake metadata
@@ -228,6 +230,17 @@ python -m app.cli verify \
   --repo-path C:\path\to\repo \
   --source ci \
   --agent-name Codex
+```
+
+Run captured test evidence:
+
+```bash
+proofmode verify \
+  --claim "Agent says tests pass" \
+  --agent-report "I ran the test suite and it passed" \
+  --checks tests \
+  --repo-path C:\path\to\repo \
+  --test-command "Pytest=pytest tests"
 ```
 
 Exit codes:
@@ -364,6 +377,13 @@ Git diff verification:
 - supports local uncommitted changes
 - supports PR/CI diff ranges through `--diff-base` and `--diff-head`
 
+Test command verification:
+
+- runs explicitly configured project or CLI test commands
+- captures exit code, duration, stdout, and stderr
+- fails the proof if any command exits nonzero or times out
+- lets the self-report comparator support or contradict "I ran tests" claims
+
 ## Planner And Evaluator
 
 Planner modes:
@@ -435,7 +455,6 @@ Main endpoints:
 Near-term improvements:
 
 - test ProofMode against 2-3 real projects and record findings
-- capture actual test command evidence
 - add richer PR configuration for full UI/API/DB workflows
 - add dashboard download button for evidence bundles
 - add PDF export for evidence bundles

@@ -6,6 +6,7 @@ import {
   GitBranch,
   Globe2,
   KeyRound,
+  ListChecks,
   MonitorCheck,
   Plus,
   Save,
@@ -31,7 +32,7 @@ import {
   updateProject,
 } from "../services/proofmodeApi";
 import type { ProjectProfile } from "../types/projects";
-import type { ApiEndpointCheck, ProofRun, ProofRunCreate, RunConfiguration, UiFlowCheck } from "../types/runs";
+import type { ApiEndpointCheck, ProofRun, ProofRunCreate, RunConfiguration, TestCommandCheck, UiFlowCheck } from "../types/runs";
 import type { SettingsStatus } from "../types/settings";
 
 export function App() {
@@ -43,6 +44,7 @@ export function App() {
   const [targetDbUrl, setTargetDbUrl] = useState("");
   const [apiChecksJson, setApiChecksJson] = useState(formatConfigJson([]));
   const [uiFlowsJson, setUiFlowsJson] = useState(formatConfigJson([]));
+  const [testCommandsJson, setTestCommandsJson] = useState(formatConfigJson([]));
   const [runConfig, setRunConfig] = useState<RunConfiguration>(defaultRunConfig);
   const [projectName, setProjectName] = useState("ProofMode local");
   const [projects, setProjects] = useState<ProjectProfile[]>([]);
@@ -113,6 +115,7 @@ export function App() {
     try {
       const apiChecks = parseConfigList<ApiEndpointCheck>(apiChecksJson, "API checks");
       const uiFlows = parseConfigList<UiFlowCheck>(uiFlowsJson, "UI flows");
+      const testCommands = parseConfigList<TestCommandCheck>(testCommandsJson, "Test commands");
       const payload: ProofRunCreate = {
         claim,
         agent_report: emptyToNull(agentReport),
@@ -122,6 +125,7 @@ export function App() {
         target_db_url: emptyToNull(targetDbUrl),
         api_checks: apiChecks,
         ui_flows: uiFlows,
+        test_commands: testCommands,
         run_config: runConfig,
       };
       const run = await createRun(payload);
@@ -171,6 +175,7 @@ export function App() {
         target_db_url: emptyToNull(targetDbUrl),
         api_checks: parseConfigList<ApiEndpointCheck>(apiChecksJson, "API checks"),
         ui_flows: parseConfigList<UiFlowCheck>(uiFlowsJson, "UI flows"),
+        test_commands: parseConfigList<TestCommandCheck>(testCommandsJson, "Test commands"),
         default_run_config: runConfig,
       };
       const savedProject = selectedProjectId
@@ -200,6 +205,7 @@ export function App() {
         target_db_url: emptyToNull(targetDbUrl),
         api_checks: parseConfigList<ApiEndpointCheck>(apiChecksJson, "API checks"),
         ui_flows: parseConfigList<UiFlowCheck>(uiFlowsJson, "UI flows"),
+        test_commands: parseConfigList<TestCommandCheck>(testCommandsJson, "Test commands"),
         default_run_config: runConfig,
       });
       setProjects((currentProjects) => [duplicatedProject, ...currentProjects]);
@@ -252,7 +258,8 @@ export function App() {
     setTargetDbUrl(project.target_db_url ?? "");
     setApiChecksJson(formatConfigJson(project.api_checks ?? []));
     setUiFlowsJson(formatConfigJson(project.ui_flows ?? []));
-    setRunConfig(project.default_run_config);
+    setTestCommandsJson(formatConfigJson(project.test_commands ?? []));
+    setRunConfig(normalizeRunConfig(project.default_run_config));
   }
 
   function resetProjectForm() {
@@ -264,6 +271,7 @@ export function App() {
     setTargetDbUrl("");
     setApiChecksJson(formatConfigJson([]));
     setUiFlowsJson(formatConfigJson([]));
+    setTestCommandsJson(formatConfigJson([]));
     setRunConfig(defaultRunConfig);
     setError(null);
   }
@@ -436,6 +444,12 @@ export function App() {
                 onChange={(checked) => setRunConfig((current) => ({ ...current, diff_enabled: checked }))}
               />
               <ConfigToggle
+                checked={runConfig.tests_enabled}
+                icon={<ListChecks size={17} />}
+                label="Tests"
+                onChange={(checked) => setRunConfig((current) => ({ ...current, tests_enabled: checked }))}
+              />
+              <ConfigToggle
                 checked={runConfig.planner_enabled}
                 icon={<Sparkles size={17} />}
                 label="Planner"
@@ -487,7 +501,7 @@ export function App() {
           <section className="target-config-panel" aria-label="Reusable verification targets">
             <div>
               <p className="config-label">Reusable project checks</p>
-              <p className="config-hint">Save endpoints and browser flows once, then reuse them across real proof runs.</p>
+              <p className="config-hint">Save endpoints, browser flows, and test commands once, then reuse them across real proof runs.</p>
             </div>
             <div className="target-config-grid">
               <label>
@@ -504,6 +518,14 @@ export function App() {
                   onChange={(event) => setUiFlowsJson(event.target.value)}
                   spellCheck={false}
                   value={uiFlowsJson}
+                />
+              </label>
+              <label>
+                Test commands
+                <textarea
+                  onChange={(event) => setTestCommandsJson(event.target.value)}
+                  spellCheck={false}
+                  value={testCommandsJson}
                 />
               </label>
             </div>
@@ -600,6 +622,7 @@ const defaultRunConfig: RunConfiguration = {
   api_enabled: true,
   db_enabled: true,
   diff_enabled: true,
+  tests_enabled: false,
   planner_enabled: true,
   approval_required: true,
 };
@@ -620,6 +643,7 @@ const runPresets: RunPreset[] = [
       api_enabled: false,
       db_enabled: false,
       diff_enabled: false,
+      tests_enabled: false,
       planner_enabled: true,
       approval_required: true,
     },
@@ -633,6 +657,7 @@ const runPresets: RunPreset[] = [
       api_enabled: true,
       db_enabled: false,
       diff_enabled: true,
+      tests_enabled: false,
       planner_enabled: true,
       approval_required: true,
     },
@@ -646,6 +671,7 @@ const runPresets: RunPreset[] = [
       api_enabled: false,
       db_enabled: true,
       diff_enabled: true,
+      tests_enabled: false,
       planner_enabled: true,
       approval_required: true,
     },
@@ -659,6 +685,21 @@ const runPresets: RunPreset[] = [
       api_enabled: false,
       db_enabled: false,
       diff_enabled: true,
+      tests_enabled: false,
+      planner_enabled: true,
+      approval_required: true,
+    },
+  },
+  {
+    id: "tests",
+    label: "Tests",
+    description: "Commands",
+    config: {
+      ui_enabled: false,
+      api_enabled: false,
+      db_enabled: false,
+      diff_enabled: false,
+      tests_enabled: true,
       planner_enabled: true,
       approval_required: true,
     },
@@ -871,7 +912,8 @@ function getRunValidationIssues({
     !runConfig.ui_enabled &&
     !runConfig.api_enabled &&
     !runConfig.db_enabled &&
-    !runConfig.diff_enabled
+    !runConfig.diff_enabled &&
+    !runConfig.tests_enabled
   ) {
     issues.push({
       field: "runConfig",
@@ -891,12 +933,21 @@ function getActivePresetId(config: RunConfiguration): string | null {
   return runPresets.find((preset) => configsMatch(preset.config, config))?.id ?? null;
 }
 
+function normalizeRunConfig(config: RunConfiguration): RunConfiguration {
+  return {
+    ...defaultRunConfig,
+    ...config,
+    tests_enabled: config.tests_enabled ?? false,
+  };
+}
+
 function configsMatch(first: RunConfiguration, second: RunConfiguration): boolean {
   return (
     first.ui_enabled === second.ui_enabled &&
     first.api_enabled === second.api_enabled &&
     first.db_enabled === second.db_enabled &&
     first.diff_enabled === second.diff_enabled &&
+    first.tests_enabled === second.tests_enabled &&
     first.planner_enabled === second.planner_enabled &&
     first.approval_required === second.approval_required
   );

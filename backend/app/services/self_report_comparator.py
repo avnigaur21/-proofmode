@@ -40,7 +40,7 @@ class SelfReportComparator:
         topics: list[str] = []
         keyword_groups = {
             "tests": ("test", "pytest", "unit test", "integration test", "suite passed"),
-            "ui": ("ui", "frontend", "page", "screen", "button", "click", "browser", "playwright"),
+            "ui": ("frontend", "page", "screen", "button", "click", "browser", "playwright"),
             "api": ("api", "endpoint", "route", "request", "response", "contract"),
             "db": ("database", "db", "migration", "table", "row", "schema"),
             "diff": ("changed", "commit", "git", "diff", "files"),
@@ -63,12 +63,23 @@ class SelfReportComparator:
             return self._layer_mismatch(topic, report, run)
 
         if topic == "tests":
+            tests_check = next((check for check in run.checks if check.layer == "tests"), None)
+            if tests_check and tests_check.status == CheckStatus.PASSED:
+                return None
+            if tests_check and tests_check.status == CheckStatus.FAILED:
+                return SelfReportMismatch(
+                    topic=topic,
+                    severity="critical",
+                    agent_statement=self._excerpt(report),
+                    evidence_status=tests_check.status,
+                    explanation=f"The agent mentioned tests, but captured test evidence failed: {tests_check.summary}",
+                )
             return SelfReportMismatch(
                 topic=topic,
                 severity="warning",
                 agent_statement=self._excerpt(report),
                 evidence_status="not_verified",
-                explanation="The agent mentioned tests, but ProofMode does not currently capture test command evidence.",
+                explanation="The agent mentioned tests, but ProofMode did not capture passing test command evidence.",
             )
 
         if topic == "screenshots":

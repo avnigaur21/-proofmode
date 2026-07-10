@@ -59,6 +59,21 @@ proofmode verify \
   --api-base-url http://localhost:8000/health
 ```
 
+## Test Evidence Pass
+
+Use this when the agent claims it ran tests:
+
+```bash
+proofmode verify \
+  --claim "Agent says the test suite passes" \
+  --agent-report "I ran the tests and they passed" \
+  --checks tests \
+  --repo-path C:\path\to\other\project \
+  --test-command "Pytest=pytest tests"
+```
+
+ProofMode records the command, exit code, duration, stdout, and stderr. If the command fails or times out, the proof fails.
+
 ## What To Learn
 
 After each run, inspect `proofmode-runs/` and the dashboard. The goal is to understand where ProofMode has strong evidence and where it still needs better proof capture.

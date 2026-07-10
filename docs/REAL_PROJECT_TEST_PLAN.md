@@ -27,6 +27,7 @@ Create one ProofMode project profile per target project:
 - enabled checks: start with UI + API + Git diff, then add DB after the test DB is safe.
 - `api_checks`: reusable endpoint checks.
 - `ui_flows`: reusable browser flow checks.
+- `test_commands`: reusable commands such as unit tests, backend tests, or frontend builds.
 
 Example API checks:
 
@@ -57,6 +58,24 @@ Example UI flow:
 ]
 ```
 
+Example test commands:
+
+```json
+[
+  {
+    "name": "Backend tests",
+    "command": "pytest tests",
+    "timeout_seconds": 120
+  },
+  {
+    "name": "Frontend build",
+    "command": "npm run build",
+    "working_directory": "C:\\path\\to\\project\\frontend",
+    "timeout_seconds": 180
+  }
+]
+```
+
 ## Test Scenarios
 
 Run these claims against each project:
@@ -67,6 +86,7 @@ Run these claims against each project:
 4. API claim: "The user endpoint still returns the expected fields."
 5. DB claim: "The migration updated the users table."
 6. Diff claim: "Only frontend files changed."
+7. Test claim: "I ran the test suite and it passed."
 
 ## What To Record
 
@@ -87,6 +107,7 @@ ProofMode is useful if it can:
 - identify when an agent claims more than it proved,
 - produce evidence a human can review,
 - flag missing UI/API/DB proof as insufficient,
+- support or contradict "I ran tests" using actual command output,
 - connect Git diff risk to verification layers,
 - generate a reusable report or evidence bundle.
 

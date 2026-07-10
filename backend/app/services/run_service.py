@@ -19,6 +19,7 @@ from app.services.timeline import TimelineRecorder
 from app.verifiers.api_verifier import ApiVerifier
 from app.verifiers.db_verifier import DbVerifier
 from app.verifiers.diff_verifier import DiffVerifier
+from app.verifiers.test_command_verifier import TestCommandVerifier
 from app.verifiers.ui_verifier import UiVerifier
 
 
@@ -36,6 +37,7 @@ class RunService:
             ("api", ApiVerifier()),
             ("db", DbVerifier()),
             ("diff", DiffVerifier()),
+            ("tests", TestCommandVerifier()),
         ]
 
     def create_run(self, payload: ProofRunCreate) -> ProofRun:
@@ -47,6 +49,7 @@ class RunService:
             target_db_url=payload.target_db_url,
             api_checks=payload.api_checks,
             ui_flows=payload.ui_flows,
+            test_commands=payload.test_commands,
             run_config=payload.run_config,
             claim_source=payload.claim_source,
             agent_report=payload.agent_report,
@@ -65,6 +68,7 @@ class RunService:
                 "has_repo_path": bool(payload.repo_path),
                 "api_check_count": len(payload.api_checks),
                 "ui_flow_count": len(payload.ui_flows),
+                "test_command_count": len(payload.test_commands),
                 "run_config": payload.run_config.model_dump(mode="json"),
                 "claim_source": payload.claim_source.model_dump(mode="json"),
                 "has_agent_report": bool(payload.agent_report),
@@ -213,6 +217,21 @@ class RunService:
                 )
             )
 
+        if run.run_config.tests_enabled:
+            for test_command in run.test_commands:
+                checks.append(
+                    PlannedCheck(
+                        layer="tests",
+                        type="test_command",
+                        description=f"Run configured test command: {test_command.name}.",
+                        target=test_command.command,
+                        assertions={
+                            "working_directory": test_command.working_directory,
+                            "timeout_seconds": test_command.timeout_seconds,
+                        },
+                    )
+                )
+
         if run.run_config.ui_enabled:
             checks.append(
                 PlannedCheck(
@@ -341,6 +360,7 @@ class RunService:
             "snapshot_url",
             "evidence_url",
             "issues",
+            "commands",
             "changed_files",
             "recommended_layers",
         )

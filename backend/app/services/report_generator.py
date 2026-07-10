@@ -16,6 +16,7 @@ class ReportGenerator:
             f"- API contract verification: `{self._enabled(run.run_config.api_enabled)}`",
             f"- Database state verification: `{self._enabled(run.run_config.db_enabled)}`",
             f"- Git diff analysis: `{self._enabled(run.run_config.diff_enabled)}`",
+            f"- Test command evidence: `{self._enabled(run.run_config.tests_enabled)}`",
             f"- Verification planner: `{self._enabled(run.run_config.planner_enabled)}`",
             f"- Human approval gate: `{self._enabled(run.run_config.approval_required)}`",
             "",

@@ -40,8 +40,8 @@ class SelfReportVerdict(StrEnum):
     NOT_PROVIDED = "not_provided"
 
 
-VerificationLayer = Literal["ui", "api", "db", "diff"]
-TimelineLayer = Literal["run", "planner", "evaluator", "ui", "api", "db", "diff", "report"]
+VerificationLayer = Literal["ui", "api", "db", "diff", "tests"]
+TimelineLayer = Literal["run", "planner", "evaluator", "ui", "api", "db", "diff", "tests", "report"]
 
 
 class PlannedCheck(BaseModel):
@@ -74,6 +74,13 @@ class UiFlowCheck(BaseModel):
     steps: list[UiFlowStep] = Field(default_factory=list)
 
 
+class TestCommandCheck(BaseModel):
+    name: str = Field(..., min_length=1)
+    command: str = Field(..., min_length=1)
+    working_directory: str | None = None
+    timeout_seconds: int = Field(default=120, ge=1, le=900)
+
+
 class PlannerMetadata(BaseModel):
     mode: str = "deterministic"
     source: str = "deterministic"
@@ -96,6 +103,7 @@ class RunConfiguration(BaseModel):
     api_enabled: bool = True
     db_enabled: bool = True
     diff_enabled: bool = True
+    tests_enabled: bool = False
     planner_enabled: bool = True
     approval_required: bool = True
 
@@ -120,6 +128,7 @@ class ProofRunCreate(BaseModel):
     target_db_url: str | None = None
     api_checks: list[ApiEndpointCheck] = Field(default_factory=list)
     ui_flows: list[UiFlowCheck] = Field(default_factory=list)
+    test_commands: list[TestCommandCheck] = Field(default_factory=list)
     run_config: RunConfiguration = Field(default_factory=RunConfiguration)
     claim_source: ClaimSourceMetadata = Field(default_factory=ClaimSourceMetadata)
 
@@ -145,6 +154,7 @@ class ProofRunCreate(BaseModel):
                 self.run_config.api_enabled,
                 self.run_config.db_enabled,
                 self.run_config.diff_enabled,
+                self.run_config.tests_enabled,
             )
         ):
             issues.append("at least one automated proof check must be enabled")
@@ -235,6 +245,7 @@ class ProofRun(BaseModel):
     target_db_url: str | None = None
     api_checks: list[ApiEndpointCheck] = Field(default_factory=list)
     ui_flows: list[UiFlowCheck] = Field(default_factory=list)
+    test_commands: list[TestCommandCheck] = Field(default_factory=list)
     run_config: RunConfiguration = Field(default_factory=RunConfiguration)
     claim_source: ClaimSourceMetadata = Field(default_factory=ClaimSourceMetadata)
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)

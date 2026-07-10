@@ -12,6 +12,7 @@ import {
   GitBranch,
   Globe2,
   Image,
+  ListChecks,
   MonitorCheck,
   Sparkles,
   Wrench,
@@ -35,6 +36,7 @@ const layerIcons: Record<VerificationLayer, typeof MonitorCheck> = {
   api: Globe2,
   db: Database,
   diff: GitBranch,
+  tests: ListChecks,
 };
 
 export function RunDetail({
@@ -183,6 +185,7 @@ export function RunDetail({
       <EvidenceSection check={checksByLayer.get("api")} layer="api" />
       <EvidenceSection check={checksByLayer.get("db")} layer="db" />
       <EvidenceSection check={checksByLayer.get("diff")} layer="diff" />
+      <EvidenceSection check={checksByLayer.get("tests")} layer="tests" />
 
       <TimelineSection events={currentRun.timeline ?? []} />
 
@@ -554,6 +557,7 @@ function RunConfigurationSummary({ run }: { run: ProofRun }) {
     ["API", config.api_enabled],
     ["DB", config.db_enabled],
     ["Git diff", config.diff_enabled],
+    ["Tests", config.tests_enabled ?? false],
     ["Planner", config.planner_enabled],
     ["Approval", config.approval_required],
   ];
@@ -725,6 +729,7 @@ function EvidenceSection({ check, layer }: { check?: ProofCheck; layer: Verifica
       {layer === "api" ? <IssueEvidence check={check} title="API Contract Issues" /> : null}
       {layer === "db" ? <IssueEvidence check={check} title="DB State Issues" /> : null}
       {layer === "diff" ? <DiffEvidence check={check} /> : null}
+      {layer === "tests" ? <TestEvidence check={check} /> : null}
       <ArtifactLinks evidence={check.evidence} />
     </section>
   );
@@ -816,6 +821,29 @@ function DiffEvidence({ check }: { check: ProofCheck }) {
         </div>
       )}
     </>
+  );
+}
+
+function TestEvidence({ check }: { check: ProofCheck }) {
+  const commands = asObjectArray(check.evidence.commands);
+
+  if (commands.length === 0) {
+    return <p className="muted-text">No command output captured.</p>;
+  }
+
+  return (
+    <div className="issue-block">
+      <h4>Command Evidence</h4>
+      <div className="issue-list">
+        {commands.map((command, index) => (
+          <div className="issue-row" key={index}>
+            <strong>{asString(command.name) ?? "Test command"}</strong>
+            <code>exit {String(command.exit_code ?? "unknown")}</code>
+            <pre>{JSON.stringify(command, null, 2)}</pre>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1047,7 +1075,7 @@ function findPreviousRun(allRuns: ProofRun[], currentRun: ProofRun | null): Proo
 }
 
 function comparisonRows(currentRun: ProofRun, previousRun: ProofRun) {
-  const layers: VerificationLayer[] = ["ui", "api", "db", "diff"];
+  const layers: VerificationLayer[] = ["ui", "api", "db", "diff", "tests"];
   const currentChecks = checksByLayerMap(currentRun);
   const previousChecks = checksByLayerMap(previousRun);
 

@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from app.schemas.runs import ProofRun, RunConfiguration
+from app.schemas.runs import ProofRun, RunConfiguration, TestCommandCheck
 
 
 class ClaimIngestionCreate(BaseModel):
@@ -20,6 +20,7 @@ class ClaimIngestionCreate(BaseModel):
     target_url: str | None = None
     api_base_url: str | None = None
     target_db_url: str | None = None
+    test_commands: list[TestCommandCheck] = Field(default_factory=list)
     run_config: RunConfiguration | None = None
 
 

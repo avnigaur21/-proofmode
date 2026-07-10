@@ -160,6 +160,33 @@ def test_cli_verify_exports_evidence_bundle(tmp_path, capsys) -> None:
     assert "reports/report.md" in names
 
 
+def test_cli_verify_runs_test_command_evidence(tmp_path, capsys) -> None:
+    exit_code = main(
+        [
+            "verify",
+            "--claim",
+            "Agent says tests pass",
+            "--agent-report",
+            "I ran the tests and they passed.",
+            "--repo-path",
+            str(tmp_path),
+            "--checks",
+            "tests",
+            "--test-command",
+            "Python smoke=python -c \"print('cli test evidence')\"",
+            "--json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    body = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert body["checks"][0]["layer"] == "tests"
+    assert body["checks"][0]["evidence"]["commands"][0]["exit_code"] == 0
+    assert body["self_report_comparison"]["verdict"] == "aligned"
+
+
 def test_cli_verify_returns_usage_error_for_missing_project(capsys) -> None:
     exit_code = main(
         [

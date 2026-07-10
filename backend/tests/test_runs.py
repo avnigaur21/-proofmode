@@ -12,6 +12,7 @@ from app.schemas.runs import (
     ProofCheck,
     ProofRun,
     RunConfiguration,
+    TestCommandCheck as RunTestCommandCheck,
     UiFlowCheck,
     UiFlowStep,
     VerificationChecklist,
@@ -19,6 +20,7 @@ from app.schemas.runs import (
 from app.services.evidence_evaluator import EvidenceEvaluator
 from app.services.run_service import RunService
 from app.verifiers.db_verifier import DbVerifier
+from app.verifiers.test_command_verifier import TestCommandVerifier
 
 
 client = TestClient(app)
@@ -470,6 +472,78 @@ def test_run_configuration_skips_disabled_layers(tmp_path) -> None:
     assert {check["layer"] for check in body["checklist"]["checks"]} == {"diff"}
     assert "ui.skipped" in [event["type"] for event in body["timeline"]]
     assert "api.skipped" in [event["type"] for event in body["timeline"]]
+
+
+def test_test_command_verifier_captures_passing_command(tmp_path) -> None:
+    run = ProofRun(
+        claim="Agent says tests pass",
+        repo_path=str(tmp_path),
+        test_commands=[
+            RunTestCommandCheck(
+                name="Python smoke",
+                command="python -c \"print('proofmode tests passed')\"",
+                timeout_seconds=10,
+            )
+        ],
+    )
+
+    check = TestCommandVerifier().verify(run)
+
+    assert check.status == "passed"
+    assert check.evidence["commands"][0]["exit_code"] == 0
+    assert "proofmode tests passed" in check.evidence["commands"][0]["stdout"]
+
+
+def test_test_command_verifier_fails_nonzero_command(tmp_path) -> None:
+    run = ProofRun(
+        claim="Agent says tests pass",
+        repo_path=str(tmp_path),
+        test_commands=[
+            RunTestCommandCheck(
+                name="Failing smoke",
+                command="python -c \"import sys; sys.exit(3)\"",
+                timeout_seconds=10,
+            )
+        ],
+    )
+
+    check = TestCommandVerifier().verify(run)
+
+    assert check.status == "failed"
+    assert check.evidence["commands"][0]["exit_code"] == 3
+
+
+def test_self_report_tests_claim_is_supported_by_test_command_evidence(tmp_path) -> None:
+    response = client.post(
+        "/runs",
+        json={
+            "claim": "Agent says tests are passing",
+            "agent_report": "I ran the test suite and it passed.",
+            "repo_path": str(tmp_path),
+            "test_commands": [
+                {
+                    "name": "Python smoke",
+                    "command": "python -c \"print('ok')\"",
+                    "timeout_seconds": 10,
+                }
+            ],
+            "run_config": {
+                "ui_enabled": False,
+                "api_enabled": False,
+                "db_enabled": False,
+                "diff_enabled": False,
+                "tests_enabled": True,
+                "planner_enabled": True,
+                "approval_required": True,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "passed"
+    assert body["self_report_comparison"]["verdict"] == "aligned"
+    assert _check_for_layer(body, "tests")["evidence"]["commands"][0]["exit_code"] == 0
 
 
 def test_configured_project_targets_are_added_to_checklist() -> None:

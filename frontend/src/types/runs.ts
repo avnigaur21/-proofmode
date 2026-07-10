@@ -3,7 +3,7 @@ export type RunStatus = "pending" | "running" | "passed" | "failed" | "uncertain
 export type ApprovalDecision = "approved" | "rejected" | "fix_requested";
 export type EvidenceVerdict = "supported" | "contradicted" | "insufficient";
 export type SelfReportVerdict = "aligned" | "partially_unsupported" | "contradicted" | "not_provided";
-export type VerificationLayer = "ui" | "api" | "db" | "diff";
+export type VerificationLayer = "ui" | "api" | "db" | "diff" | "tests";
 export type TimelineLayer = "run" | "planner" | "evaluator" | VerificationLayer | "report";
 
 export type RunConfiguration = {
@@ -11,6 +11,7 @@ export type RunConfiguration = {
   api_enabled: boolean;
   db_enabled: boolean;
   diff_enabled: boolean;
+  tests_enabled: boolean;
   planner_enabled: boolean;
   approval_required: boolean;
 };
@@ -58,6 +59,13 @@ export type UiFlowCheck = {
   name: string;
   path?: string | null;
   steps: UiFlowStep[];
+};
+
+export type TestCommandCheck = {
+  name: string;
+  command: string;
+  working_directory?: string | null;
+  timeout_seconds?: number;
 };
 
 export type VerificationChecklist = {
@@ -140,6 +148,7 @@ export type ProofRun = {
   target_db_url?: string | null;
   api_checks: ApiEndpointCheck[];
   ui_flows: UiFlowCheck[];
+  test_commands: TestCommandCheck[];
   run_config: RunConfiguration;
   claim_source: ClaimSourceMetadata;
   checklist: VerificationChecklist;
@@ -161,6 +170,7 @@ export type ProofRunCreate = {
   target_db_url?: string | null;
   api_checks?: ApiEndpointCheck[];
   ui_flows?: UiFlowCheck[];
+  test_commands?: TestCommandCheck[];
   run_config?: RunConfiguration;
   claim_source?: ClaimSourceMetadata;
 };

@@ -8,13 +8,13 @@ from pydantic import ValidationError
 
 from app.schemas.claims import ClaimIngestionCreate
 from app.schemas.projects import ProjectProfile
-from app.schemas.runs import ProofRun, RunConfiguration
+from app.schemas.runs import ProofRun, RunConfiguration, TestCommandCheck
 from app.services.claim_ingestion_service import claim_ingestion_service
 from app.services.evidence_bundle import evidence_bundle_service
 from app.services.project_service import project_service
 
 
-CHECK_LAYERS = ("ui", "api", "db", "diff")
+CHECK_LAYERS = ("ui", "api", "db", "diff", "tests")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -44,6 +44,7 @@ def _verify(args: argparse.Namespace) -> int:
             target_url=args.target_url,
             api_base_url=args.api_base_url,
             target_db_url=args.target_db_url,
+            test_commands=_test_commands_from_args(args),
             run_config=run_config,
             raw_payload={
                 "argv": ["verify", *sys.argv[1:]] if args.capture_argv else [],
@@ -118,6 +119,12 @@ def _build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--api-base-url", help="API URL for contract verification")
     verify.add_argument("--target-db-url", help="database URL for state verification")
     verify.add_argument(
+        "--test-command",
+        action="append",
+        default=[],
+        help='test command as name=command; repeatable, for example --test-command "Pytest=pytest tests"',
+    )
+    verify.add_argument(
         "--checks",
         help="comma-separated proof layers: full, ui, api, db, diff. Defaults to project config.",
     )
@@ -165,6 +172,7 @@ def _run_config_from_args(args: argparse.Namespace, project: ProjectProfile | No
             "api_enabled": "api" in selected_layers,
             "db_enabled": "db" in selected_layers,
             "diff_enabled": "diff" in selected_layers,
+            "tests_enabled": "tests" in selected_layers,
             "planner_enabled": False if args.no_planner else base_config.planner_enabled,
             "approval_required": False if args.no_approval else base_config.approval_required,
         }
@@ -212,6 +220,20 @@ def _metadata_from_args(args: argparse.Namespace) -> dict[str, str]:
         metadata["diff_head"] = args.diff_head
 
     return metadata
+
+
+def _test_commands_from_args(args: argparse.Namespace) -> list[TestCommandCheck]:
+    commands: list[TestCommandCheck] = []
+    for item in args.test_command:
+        if "=" not in item:
+            raise ValueError(f"Test command must use name=command format: {item}")
+        name, command = item.split("=", 1)
+        name = name.strip()
+        command = command.strip()
+        if not name or not command:
+            raise ValueError("Test command name and command cannot be blank")
+        commands.append(TestCommandCheck(name=name, command=command))
+    return commands
 
 
 def _print_run_summary(claim_id: str, run) -> None:

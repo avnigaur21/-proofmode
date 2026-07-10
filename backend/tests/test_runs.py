@@ -5,7 +5,17 @@ from zipfile import ZipFile
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.schemas.runs import CheckStatus, PlannedCheck, ProofCheck, ProofRun, VerificationChecklist
+from app.schemas.runs import (
+    ApiEndpointCheck,
+    CheckStatus,
+    PlannedCheck,
+    ProofCheck,
+    ProofRun,
+    RunConfiguration,
+    UiFlowCheck,
+    UiFlowStep,
+    VerificationChecklist,
+)
 from app.services.evidence_evaluator import EvidenceEvaluator
 from app.services.run_service import RunService
 from app.verifiers.db_verifier import DbVerifier
@@ -63,6 +73,22 @@ def test_claim_ingestion_creates_linked_run_from_project_profile(tmp_path) -> No
                 "planner_enabled": True,
                 "approval_required": True,
             },
+            "api_checks": [
+                {
+                    "name": "Health endpoint",
+                    "method": "GET",
+                    "path": "/health",
+                    "expected_status": 200,
+                    "required_fields": ["status"],
+                }
+            ],
+            "ui_flows": [
+                {
+                    "name": "Home smoke",
+                    "path": "/",
+                    "steps": [{"action": "expect_text", "text": "ProofMode"}],
+                }
+            ],
         },
     )
     assert project_response.status_code == 200
@@ -91,6 +117,8 @@ def test_claim_ingestion_creates_linked_run_from_project_profile(tmp_path) -> No
     assert body["run"]["claim_source"]["agent_name"] == "Codex"
     assert body["run"]["claim_source"]["metadata"]["commit_sha"] == "abc123"
     assert body["run"]["agent_report"] == "I changed the files and verified the diff."
+    assert body["run"]["api_checks"][0]["name"] == "Health endpoint"
+    assert body["run"]["ui_flows"][0]["name"] == "Home smoke"
     assert body["run"]["self_report_comparison"]["verdict"] == "aligned"
     assert [check["layer"] for check in body["run"]["checks"]] == ["diff"]
 
@@ -310,6 +338,25 @@ def test_project_profiles_can_be_created_listed_updated_and_deleted() -> None:
             "target_url": "http://localhost:5173",
             "api_base_url": "http://localhost:8000/health",
             "target_db_url": "sqlite:///./proofmode-runs/demo.db",
+            "api_checks": [
+                {
+                    "name": "Health endpoint",
+                    "method": "GET",
+                    "path": "/health",
+                    "expected_status": 200,
+                    "required_fields": ["status"],
+                }
+            ],
+            "ui_flows": [
+                {
+                    "name": "Login smoke",
+                    "path": "/login",
+                    "steps": [
+                        {"action": "expect_selector", "selector": "form"},
+                        {"action": "expect_text", "text": "Login"},
+                    ],
+                }
+            ],
             "default_run_config": {
                 "ui_enabled": True,
                 "api_enabled": True,
@@ -325,6 +372,8 @@ def test_project_profiles_can_be_created_listed_updated_and_deleted() -> None:
     project = create_response.json()
     assert project["name"] == "ProofMode workspace"
     assert project["default_run_config"]["db_enabled"] is False
+    assert project["api_checks"][0]["path"] == "/health"
+    assert project["ui_flows"][0]["steps"][0]["selector"] == "form"
 
     list_response = client.get("/projects")
     assert list_response.status_code == 200
@@ -342,12 +391,14 @@ def test_project_profiles_can_be_created_listed_updated_and_deleted() -> None:
                 "planner_enabled": False,
                 "approval_required": True,
             },
+            "api_checks": [],
         },
     )
 
     assert update_response.status_code == 200
     updated_project = update_response.json()
     assert updated_project["name"] == "ProofMode saved profile"
+    assert updated_project["api_checks"] == []
     assert updated_project["default_run_config"]["ui_enabled"] is False
     assert updated_project["default_run_config"]["planner_enabled"] is False
 
@@ -419,6 +470,45 @@ def test_run_configuration_skips_disabled_layers(tmp_path) -> None:
     assert {check["layer"] for check in body["checklist"]["checks"]} == {"diff"}
     assert "ui.skipped" in [event["type"] for event in body["timeline"]]
     assert "api.skipped" in [event["type"] for event in body["timeline"]]
+
+
+def test_configured_project_targets_are_added_to_checklist() -> None:
+    run = ProofRun(
+        claim="Verify saved project targets",
+        target_url="http://localhost:5173",
+        api_base_url="http://localhost:8000",
+        run_config=RunConfiguration(
+            ui_enabled=True,
+            api_enabled=True,
+            db_enabled=False,
+            diff_enabled=False,
+            planner_enabled=False,
+            approval_required=True,
+        ),
+        api_checks=[
+            ApiEndpointCheck(
+                name="Health endpoint",
+                method="GET",
+                path="/health",
+                expected_status=200,
+                required_fields=["status"],
+            )
+        ],
+        ui_flows=[
+            UiFlowCheck(
+                name="Login smoke",
+                path="/login",
+                steps=[UiFlowStep(action="expect_text", text="Login")],
+            )
+        ],
+    )
+
+    checklist = RunService()._create_checklist(run)
+
+    configured_checks = [check for check in checklist.checks if check.type in {"configured_endpoint", "configured_flow"}]
+    assert len(configured_checks) == 2
+    assert configured_checks[0].assertions["path"] == "/health"
+    assert configured_checks[1].assertions["steps"][0]["text"] == "Login"
 
 
 def test_demo_seed_creates_walkthrough_runs() -> None:

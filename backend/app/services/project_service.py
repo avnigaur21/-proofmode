@@ -16,6 +16,8 @@ class ProjectService:
             target_url=payload.target_url,
             api_base_url=payload.api_base_url,
             target_db_url=payload.target_db_url,
+            api_checks=payload.api_checks,
+            ui_flows=payload.ui_flows,
             default_run_config=payload.default_run_config,
         )
         self._projects[project.id] = project

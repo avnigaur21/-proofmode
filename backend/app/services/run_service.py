@@ -45,6 +45,8 @@ class RunService:
             target_url=payload.target_url,
             api_base_url=payload.api_base_url,
             target_db_url=payload.target_db_url,
+            api_checks=payload.api_checks,
+            ui_flows=payload.ui_flows,
             run_config=payload.run_config,
             claim_source=payload.claim_source,
             agent_report=payload.agent_report,
@@ -61,6 +63,8 @@ class RunService:
                 "has_api_base_url": bool(payload.api_base_url),
                 "has_target_db_url": bool(payload.target_db_url),
                 "has_repo_path": bool(payload.repo_path),
+                "api_check_count": len(payload.api_checks),
+                "ui_flow_count": len(payload.ui_flows),
                 "run_config": payload.run_config.model_dump(mode="json"),
                 "claim_source": payload.claim_source.model_dump(mode="json"),
                 "has_agent_report": bool(payload.agent_report),
@@ -179,7 +183,7 @@ class RunService:
     def _create_checklist(self, run: ProofRun) -> VerificationChecklist:
         if not run.run_config.planner_enabled:
             return VerificationChecklist(
-                checks=self._configured_checks(run),
+                checks=[*self._configured_checks(run), *self._configured_target_checks(run)],
                 affected_files_hint=[],
                 planner=PlannerMetadata(
                     mode="disabled",
@@ -193,6 +197,7 @@ class RunService:
         checklist.checks = [
             check for check in checklist.checks if run.run_config.is_layer_enabled(check.layer)
         ]
+        checklist.checks.extend(self._configured_target_checks(run))
         return checklist
 
     def _configured_checks(self, run: ProofRun) -> list[PlannedCheck]:
@@ -237,6 +242,43 @@ class RunService:
                     target=self._mask_db_url(run.target_db_url) if run.target_db_url else None,
                 )
             )
+
+        return checks
+
+    def _configured_target_checks(self, run: ProofRun) -> list[PlannedCheck]:
+        checks: list[PlannedCheck] = []
+
+        if run.run_config.api_enabled:
+            for endpoint in run.api_checks:
+                checks.append(
+                    PlannedCheck(
+                        layer="api",
+                        type="configured_endpoint",
+                        description=f"Verify configured API endpoint: {endpoint.name}.",
+                        target=endpoint.path,
+                        assertions={
+                            "method": endpoint.method.upper(),
+                            "path": endpoint.path,
+                            "expected_status": endpoint.expected_status,
+                            "required_fields": endpoint.required_fields,
+                        },
+                    )
+                )
+
+        if run.run_config.ui_enabled:
+            for flow in run.ui_flows:
+                checks.append(
+                    PlannedCheck(
+                        layer="ui",
+                        type="configured_flow",
+                        description=f"Run configured UI flow: {flow.name}.",
+                        target=flow.path or run.target_url,
+                        assertions={
+                            "path": flow.path,
+                            "steps": [step.model_dump(mode="json") for step in flow.steps],
+                        },
+                    )
+                )
 
         return checks
 

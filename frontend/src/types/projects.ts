@@ -1,4 +1,4 @@
-import type { RunConfiguration } from "./runs";
+import type { ApiEndpointCheck, RunConfiguration, UiFlowCheck } from "./runs";
 
 export type ProjectProfile = {
   id: string;
@@ -7,6 +7,8 @@ export type ProjectProfile = {
   target_url?: string | null;
   api_base_url?: string | null;
   target_db_url?: string | null;
+  api_checks: ApiEndpointCheck[];
+  ui_flows: UiFlowCheck[];
   default_run_config: RunConfiguration;
   created_at: string;
   updated_at: string;
@@ -18,6 +20,8 @@ export type ProjectProfileCreate = {
   target_url?: string | null;
   api_base_url?: string | null;
   target_db_url?: string | null;
+  api_checks?: ApiEndpointCheck[];
+  ui_flows?: UiFlowCheck[];
   default_run_config: RunConfiguration;
 };
 

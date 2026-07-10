@@ -38,6 +38,28 @@ export type PlannedCheck = {
   assertions?: Record<string, unknown>;
 };
 
+export type ApiEndpointCheck = {
+  name: string;
+  method?: string;
+  path: string;
+  expected_status?: number;
+  required_fields?: string[];
+};
+
+export type UiFlowStep = {
+  action: "click" | "fill" | "expect_text" | "expect_url" | "expect_selector";
+  selector?: string | null;
+  text?: string | null;
+  value?: string | null;
+  url_contains?: string | null;
+};
+
+export type UiFlowCheck = {
+  name: string;
+  path?: string | null;
+  steps: UiFlowStep[];
+};
+
 export type VerificationChecklist = {
   checks: PlannedCheck[];
   affected_files_hint: string[];
@@ -116,6 +138,8 @@ export type ProofRun = {
   target_url?: string | null;
   api_base_url?: string | null;
   target_db_url?: string | null;
+  api_checks: ApiEndpointCheck[];
+  ui_flows: UiFlowCheck[];
   run_config: RunConfiguration;
   claim_source: ClaimSourceMetadata;
   checklist: VerificationChecklist;
@@ -135,6 +159,8 @@ export type ProofRunCreate = {
   target_url?: string | null;
   api_base_url?: string | null;
   target_db_url?: string | null;
+  api_checks?: ApiEndpointCheck[];
+  ui_flows?: UiFlowCheck[];
   run_config?: RunConfiguration;
   claim_source?: ClaimSourceMetadata;
 };

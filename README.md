@@ -17,6 +17,7 @@ ProofMode currently includes:
 
 - FastAPI backend for proof runs, claims, project profiles, artifacts, settings, and approvals
 - React + Vite dashboard for run review, saved project profiles, evidence timelines, screenshots, reports, approval gates, and run comparison
+- Project-specific reusable API endpoint checks and UI browser flow checks
 - Agent-agnostic claim ingestion through `POST /claims/ingest`
 - CLI/CI mode through `python -m app.cli verify`
 - GitHub PR verification workflow through `.github/workflows/proofmode-pr.yml`
@@ -160,6 +161,7 @@ The dashboard supports:
 - creating proof runs from a task completion claim
 - optional agent self-report input
 - saved project profiles
+- reusable project API checks and UI flow checks
 - configurable proof checks and run presets
 - run list search and show-more behavior
 - run detail view with claim intake metadata
@@ -329,6 +331,7 @@ UI verification:
 - captures page errors
 - captures failed network requests
 - supports targeted assertions like text, selector, visibility, and URL checks
+- supports saved browser flow steps: click, fill, expect text, expect selector, and expect URL
 
 API verification:
 
@@ -337,6 +340,7 @@ API verification:
 - snapshots response schemas
 - detects dropped, renamed, or type-changed fields
 - supports targeted assertions for method, path, expected status, and required fields
+- supports saved multi-endpoint project checks
 
 DB verification:
 
@@ -422,6 +426,7 @@ Main endpoints:
 
 Near-term improvements:
 
+- test ProofMode against 2-3 real projects and record findings
 - capture actual test command evidence
 - add richer PR configuration for full UI/API/DB workflows
 - add dashboard download button for evidence bundles
@@ -430,4 +435,4 @@ Near-term improvements:
 - add project-level verification policies
 - add signed or hashed audit manifests
 
-See `docs/ROADMAP.md` and `docs/CHECKPOINTS.md` for the original roadmap and checkpoint plan.
+See `docs/REAL_PROJECT_TEST_PLAN.md`, `docs/ROADMAP.md`, and `docs/CHECKPOINTS.md` for validation plans and checkpoint details.

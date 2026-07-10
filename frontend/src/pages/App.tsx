@@ -31,7 +31,7 @@ import {
   updateProject,
 } from "../services/proofmodeApi";
 import type { ProjectProfile } from "../types/projects";
-import type { ProofRun, ProofRunCreate, RunConfiguration } from "../types/runs";
+import type { ApiEndpointCheck, ProofRun, ProofRunCreate, RunConfiguration, UiFlowCheck } from "../types/runs";
 import type { SettingsStatus } from "../types/settings";
 
 export function App() {
@@ -41,6 +41,8 @@ export function App() {
   const [apiBaseUrl, setApiBaseUrl] = useState("http://localhost:8000/health");
   const [repoPath, setRepoPath] = useState("");
   const [targetDbUrl, setTargetDbUrl] = useState("");
+  const [apiChecksJson, setApiChecksJson] = useState(formatConfigJson([]));
+  const [uiFlowsJson, setUiFlowsJson] = useState(formatConfigJson([]));
   const [runConfig, setRunConfig] = useState<RunConfiguration>(defaultRunConfig);
   const [projectName, setProjectName] = useState("ProofMode local");
   const [projects, setProjects] = useState<ProjectProfile[]>([]);
@@ -109,6 +111,8 @@ export function App() {
     setIsSubmitting(true);
 
     try {
+      const apiChecks = parseConfigList<ApiEndpointCheck>(apiChecksJson, "API checks");
+      const uiFlows = parseConfigList<UiFlowCheck>(uiFlowsJson, "UI flows");
       const payload: ProofRunCreate = {
         claim,
         agent_report: emptyToNull(agentReport),
@@ -116,14 +120,16 @@ export function App() {
         api_base_url: emptyToNull(apiBaseUrl),
         repo_path: emptyToNull(repoPath),
         target_db_url: emptyToNull(targetDbUrl),
+        api_checks: apiChecks,
+        ui_flows: uiFlows,
         run_config: runConfig,
       };
       const run = await createRun(payload);
       setRuns((currentRuns) => [run, ...currentRuns]);
       setSelectedRunId(run.id);
       setShowAllRuns(false);
-    } catch {
-      setError("ProofMode could not create a run.");
+    } catch (runError) {
+      setError(runError instanceof Error ? runError.message : "ProofMode could not create a run.");
     } finally {
       setIsSubmitting(false);
     }
@@ -156,24 +162,25 @@ export function App() {
     setIsSavingProject(true);
     setError(null);
 
-    const payload = {
-      name: trimmedName,
-      target_url: emptyToNull(targetUrl),
-      api_base_url: emptyToNull(apiBaseUrl),
-      repo_path: emptyToNull(repoPath),
-      target_db_url: emptyToNull(targetDbUrl),
-      default_run_config: runConfig,
-    };
-
     try {
+      const payload = {
+        name: trimmedName,
+        target_url: emptyToNull(targetUrl),
+        api_base_url: emptyToNull(apiBaseUrl),
+        repo_path: emptyToNull(repoPath),
+        target_db_url: emptyToNull(targetDbUrl),
+        api_checks: parseConfigList<ApiEndpointCheck>(apiChecksJson, "API checks"),
+        ui_flows: parseConfigList<UiFlowCheck>(uiFlowsJson, "UI flows"),
+        default_run_config: runConfig,
+      };
       const savedProject = selectedProjectId
         ? await updateProject(selectedProjectId, payload)
         : await createProject(payload);
       setProjects((currentProjects) => upsertProject(currentProjects, savedProject));
       setSelectedProjectId(savedProject.id);
       setProjectName(savedProject.name);
-    } catch {
-      setError("ProofMode could not save this project profile.");
+    } catch (projectError) {
+      setError(projectError instanceof Error ? projectError.message : "ProofMode could not save this project profile.");
     } finally {
       setIsSavingProject(false);
     }
@@ -191,12 +198,14 @@ export function App() {
         api_base_url: emptyToNull(apiBaseUrl),
         repo_path: emptyToNull(repoPath),
         target_db_url: emptyToNull(targetDbUrl),
+        api_checks: parseConfigList<ApiEndpointCheck>(apiChecksJson, "API checks"),
+        ui_flows: parseConfigList<UiFlowCheck>(uiFlowsJson, "UI flows"),
         default_run_config: runConfig,
       });
       setProjects((currentProjects) => [duplicatedProject, ...currentProjects]);
       applyProject(duplicatedProject);
-    } catch {
-      setError("ProofMode could not duplicate this project profile.");
+    } catch (projectError) {
+      setError(projectError instanceof Error ? projectError.message : "ProofMode could not duplicate this project profile.");
     } finally {
       setIsSavingProject(false);
     }
@@ -241,6 +250,8 @@ export function App() {
     setApiBaseUrl(project.api_base_url ?? "");
     setRepoPath(project.repo_path ?? "");
     setTargetDbUrl(project.target_db_url ?? "");
+    setApiChecksJson(formatConfigJson(project.api_checks ?? []));
+    setUiFlowsJson(formatConfigJson(project.ui_flows ?? []));
     setRunConfig(project.default_run_config);
   }
 
@@ -251,6 +262,8 @@ export function App() {
     setApiBaseUrl("http://localhost:8000/health");
     setRepoPath("");
     setTargetDbUrl("");
+    setApiChecksJson(formatConfigJson([]));
+    setUiFlowsJson(formatConfigJson([]));
     setRunConfig(defaultRunConfig);
     setError(null);
   }
@@ -471,6 +484,30 @@ export function App() {
               />
             </label>
           </div>
+          <section className="target-config-panel" aria-label="Reusable verification targets">
+            <div>
+              <p className="config-label">Reusable project checks</p>
+              <p className="config-hint">Save endpoints and browser flows once, then reuse them across real proof runs.</p>
+            </div>
+            <div className="target-config-grid">
+              <label>
+                API endpoint checks
+                <textarea
+                  onChange={(event) => setApiChecksJson(event.target.value)}
+                  spellCheck={false}
+                  value={apiChecksJson}
+                />
+              </label>
+              <label>
+                UI flow checks
+                <textarea
+                  onChange={(event) => setUiFlowsJson(event.target.value)}
+                  spellCheck={false}
+                  value={uiFlowsJson}
+                />
+              </label>
+            </div>
+          </section>
         </form>
         {error ? <p className="error-text">{error}</p> : null}
       </section>
@@ -757,6 +794,30 @@ function Metric({
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function formatConfigJson(value: unknown): string {
+  return JSON.stringify(value, null, 2);
+}
+
+function parseConfigList<T>(raw: string, label: string): T[] {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    throw new Error(`${label} must be valid JSON.`);
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${label} must be a JSON array.`);
+  }
+
+  return parsed as T[];
 }
 
 function getRunValidationIssues({

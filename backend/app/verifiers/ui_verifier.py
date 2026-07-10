@@ -1,3 +1,5 @@
+from urllib.parse import urljoin
+
 from app.schemas.runs import CheckStatus, PlannedCheck, ProofCheck, ProofRun
 from app.services.artifacts import artifact_root, artifact_url
 
@@ -58,7 +60,10 @@ class UiVerifier:
 
                 page.goto(run.target_url, wait_until="networkidle", timeout=15000)
                 for check in targeted_checks:
-                    result, issues = self._evaluate_targeted_check(page, check)
+                    if check.type == "configured_flow":
+                        result, issues = self._evaluate_flow_check(page, run.target_url, check)
+                    else:
+                        result, issues = self._evaluate_targeted_check(page, check)
                     target_results.append(result)
                     target_issues.extend(issues)
                 page.screenshot(path=str(screenshot_path), full_page=True)
@@ -146,8 +151,103 @@ class UiVerifier:
                 check.assertions.get("text")
                 or check.assertions.get("selector")
                 or check.assertions.get("url_contains")
+                or check.assertions.get("steps")
             )
         ]
+
+    def _evaluate_flow_check(
+        self, page, target_url: str, check: PlannedCheck
+    ) -> tuple[dict[str, object], list[dict[str, object]]]:
+        assertions = check.assertions
+        flow_path = assertions.get("path")
+        steps = assertions.get("steps", [])
+        issues: list[dict[str, object]] = []
+        step_results: list[dict[str, object]] = []
+
+        if isinstance(flow_path, str) and flow_path:
+            page.goto(self._flow_url(target_url, flow_path), wait_until="networkidle", timeout=15000)
+
+        for index, raw_step in enumerate(steps):
+            if not isinstance(raw_step, dict):
+                continue
+            step_result, step_issues = self._evaluate_flow_step(page, raw_step, index)
+            step_results.append(step_result)
+            issues.extend(step_issues)
+
+        return (
+            {
+                "type": check.type,
+                "target": check.target,
+                "step_count": len(step_results),
+                "steps": step_results,
+                "current_url": page.url,
+            },
+            issues,
+        )
+
+    def _evaluate_flow_step(self, page, step: dict, index: int) -> tuple[dict[str, object], list[dict[str, object]]]:
+        action = str(step.get("action", ""))
+        selector = step.get("selector")
+        text = step.get("text")
+        value = step.get("value")
+        url_contains = step.get("url_contains")
+        result: dict[str, object] = {"index": index, "action": action}
+        issues: list[dict[str, object]] = []
+
+        try:
+            if action == "click" and isinstance(selector, str):
+                page.locator(selector).first.click(timeout=5000)
+                result["selector"] = selector
+                result["clicked"] = True
+            elif action == "fill" and isinstance(selector, str):
+                page.locator(selector).first.fill(str(value or ""), timeout=5000)
+                result["selector"] = selector
+                result["filled"] = True
+            elif action == "expect_text" and isinstance(text, str):
+                count = page.get_by_text(text).count()
+                result["text"] = text
+                result["text_found"] = count > 0
+                if count == 0:
+                    issues.append({"type": "flow_text_not_found", "step": index, "text": text, "severity": "high"})
+            elif action == "expect_selector" and isinstance(selector, str):
+                locator = page.locator(selector)
+                count = locator.count()
+                visible = count > 0 and locator.first.is_visible()
+                result["selector"] = selector
+                result["selector_count"] = count
+                result["selector_visible"] = visible
+                if not visible:
+                    issues.append(
+                        {"type": "flow_selector_not_visible", "step": index, "selector": selector, "severity": "high"}
+                    )
+            elif action == "expect_url" and isinstance(url_contains, str):
+                result["current_url"] = page.url
+                result["expected_contains"] = url_contains
+                if url_contains not in page.url:
+                    issues.append(
+                        {
+                            "type": "flow_url_assertion_failed",
+                            "step": index,
+                            "expected_contains": url_contains,
+                            "actual": page.url,
+                            "severity": "medium",
+                        }
+                    )
+            else:
+                issues.append({"type": "flow_step_invalid", "step": index, "action": action, "severity": "medium"})
+        except Exception as error:
+            issues.append(
+                {
+                    "type": "flow_step_failed",
+                    "step": index,
+                    "action": action,
+                    "selector": selector,
+                    "error": str(error),
+                    "severity": "high",
+                }
+            )
+
+        return result, issues
 
     def _evaluate_targeted_check(self, page, check: PlannedCheck) -> tuple[dict[str, object], list[dict[str, object]]]:
         assertions = check.assertions
@@ -210,3 +310,8 @@ class UiVerifier:
                 )
 
         return result, issues
+
+    def _flow_url(self, target_url: str, path: str) -> str:
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        return urljoin(target_url.rstrip("/") + "/", path.lstrip("/"))

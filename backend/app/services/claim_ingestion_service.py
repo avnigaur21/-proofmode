@@ -22,6 +22,8 @@ class ClaimIngestionService:
             target_url=self._first_defined(payload.target_url, project.target_url if project else None),
             api_base_url=self._first_defined(payload.api_base_url, project.api_base_url if project else None),
             target_db_url=self._first_defined(payload.target_db_url, project.target_db_url if project else None),
+            api_checks=project.api_checks if project else [],
+            ui_flows=project.ui_flows if project else [],
             run_config=payload.run_config or (project.default_run_config if project else RunConfiguration()),
             claim_source=ClaimSourceMetadata(
                 source=payload.source,

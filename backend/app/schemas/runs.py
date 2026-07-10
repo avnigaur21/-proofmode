@@ -52,6 +52,28 @@ class PlannedCheck(BaseModel):
     assertions: dict[str, Any] = Field(default_factory=dict)
 
 
+class ApiEndpointCheck(BaseModel):
+    name: str = Field(..., min_length=1)
+    method: str = "GET"
+    path: str = Field(..., min_length=1)
+    expected_status: int = 200
+    required_fields: list[str] = Field(default_factory=list)
+
+
+class UiFlowStep(BaseModel):
+    action: Literal["click", "fill", "expect_text", "expect_url", "expect_selector"]
+    selector: str | None = None
+    text: str | None = None
+    value: str | None = None
+    url_contains: str | None = None
+
+
+class UiFlowCheck(BaseModel):
+    name: str = Field(..., min_length=1)
+    path: str | None = None
+    steps: list[UiFlowStep] = Field(default_factory=list)
+
+
 class PlannerMetadata(BaseModel):
     mode: str = "deterministic"
     source: str = "deterministic"
@@ -96,6 +118,8 @@ class ProofRunCreate(BaseModel):
     target_url: str | None = None
     api_base_url: str | None = None
     target_db_url: str | None = None
+    api_checks: list[ApiEndpointCheck] = Field(default_factory=list)
+    ui_flows: list[UiFlowCheck] = Field(default_factory=list)
     run_config: RunConfiguration = Field(default_factory=RunConfiguration)
     claim_source: ClaimSourceMetadata = Field(default_factory=ClaimSourceMetadata)
 
@@ -209,6 +233,8 @@ class ProofRun(BaseModel):
     target_url: str | None = None
     api_base_url: str | None = None
     target_db_url: str | None = None
+    api_checks: list[ApiEndpointCheck] = Field(default_factory=list)
+    ui_flows: list[UiFlowCheck] = Field(default_factory=list)
     run_config: RunConfiguration = Field(default_factory=RunConfiguration)
     claim_source: ClaimSourceMetadata = Field(default_factory=ClaimSourceMetadata)
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)

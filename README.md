@@ -109,6 +109,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install -e .
 playwright install chromium
 uvicorn app.main:app --reload
 ```
@@ -119,6 +120,7 @@ On Windows PowerShell:
 cd backend
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+pip install -e .
 playwright install chromium
 uvicorn app.main:app --reload
 ```
@@ -208,6 +210,12 @@ Run ProofMode from the terminal:
 ```bash
 cd backend
 python -m app.cli verify --claim "Agent says login is complete" --project "ProofMode local"
+```
+
+After installing the backend package in editable mode, the same command is available as:
+
+```bash
+proofmode verify --claim "Agent says login is complete" --project "ProofMode local"
 ```
 
 Run without a saved project:

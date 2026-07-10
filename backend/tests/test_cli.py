@@ -1,9 +1,20 @@
 import json
 import subprocess
+import tomllib
+from pathlib import Path
 from zipfile import ZipFile
 
 from app.cli import main
 from app.services.project_service import project_service
+
+
+def test_package_exposes_proofmode_console_script() -> None:
+    pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    pyproject = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+
+    assert pyproject["project"]["name"] == "proofmode"
+    assert pyproject["project"]["requires-python"] == ">=3.12"
+    assert pyproject["project"]["scripts"]["proofmode"] == "app.cli:main"
 
 
 def test_cli_verify_uses_project_profile_and_prints_summary(tmp_path, capsys) -> None:

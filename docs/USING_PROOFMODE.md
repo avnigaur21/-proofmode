@@ -2,13 +2,23 @@
 
 This guide is for validating ProofMode against a real local project.
 
+## One-Time CLI Setup
+
+From the ProofMode backend folder:
+
+```bash
+cd backend
+pip install -e .
+```
+
+After that, you can run ProofMode as `proofmode verify ...` instead of `python -m app.cli verify ...`.
+
 ## Diff-Only First Pass
 
 Use this when the target project is a Git repository but the app is not running.
 
 ```bash
-cd backend
-python -m app.cli verify \
+proofmode verify \
   --claim "Agent says the feature is complete" \
   --agent-report "I changed the files and verified the implementation" \
   --checks diff \
@@ -30,7 +40,7 @@ Review:
 Start the target frontend first, then run:
 
 ```bash
-python -m app.cli verify \
+proofmode verify \
   --claim "Agent says the page renders correctly" \
   --agent-report "I opened the page and checked it visually" \
   --checks ui \
@@ -42,7 +52,7 @@ python -m app.cli verify \
 Start the target backend first, then run:
 
 ```bash
-python -m app.cli verify \
+proofmode verify \
   --claim "Agent says the API is working" \
   --agent-report "I checked the health endpoint" \
   --checks api \

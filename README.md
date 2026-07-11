@@ -29,6 +29,7 @@ ProofMode currently includes:
 - Test command verifier with captured exit codes, stdout, stderr, duration, and timeout handling
 - Verification planner with deterministic mode, optional LLM mode, and deterministic fallback
 - Guarded evidence evaluator with supported, contradicted, and insufficient verdicts
+- Approval risk scoring with low, medium, high, and critical risk levels
 - Agent self-report comparison against executed evidence
 - Markdown report generation and persisted JSON run records
 
@@ -48,6 +49,9 @@ UI / API / DB / Git diff checks run
         |
         v
 Evidence evaluator assigns a guarded verdict
+        |
+        v
+Risk assessor scores approval risk
         |
         v
 Agent self-report is compared against evidence
@@ -170,6 +174,7 @@ The dashboard supports:
 - run list search and show-more behavior
 - run detail view with claim intake metadata
 - evidence evaluation panel
+- approval risk panel
 - agent report vs evidence panel
 - run-to-run comparison
 - approval gate
@@ -407,6 +412,12 @@ Evaluator behavior:
 - treats uncertain checks as insufficient evidence
 - records confidence, reasons, guardrails, and rubric scores
 - optional LLM evaluator can run only after deterministic checks are clean
+
+Risk scoring:
+
+- assigns `low`, `medium`, `high`, or `critical` approval risk
+- considers failed checks, uncertain checks, missing enabled layers, evaluator verdict, self-report mismatch, pending approval, and Git diff recommendations
+- appears in the dashboard, Markdown report, CLI JSON output, and PR summaries
 
 Runtime status:
 

@@ -3,6 +3,7 @@ export type RunStatus = "pending" | "running" | "passed" | "failed" | "uncertain
 export type ApprovalDecision = "approved" | "rejected" | "fix_requested";
 export type EvidenceVerdict = "supported" | "contradicted" | "insufficient";
 export type SelfReportVerdict = "aligned" | "partially_unsupported" | "contradicted" | "not_provided";
+export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type VerificationLayer = "ui" | "api" | "db" | "diff" | "tests";
 export type TimelineLayer = "run" | "planner" | "evaluator" | VerificationLayer | "report";
 
@@ -136,6 +137,21 @@ export type EvaluationRubricScore = {
   explanation: string;
 };
 
+export type RiskFactor = {
+  name: string;
+  severity: RiskLevel;
+  points: number;
+  explanation: string;
+};
+
+export type RiskAssessment = {
+  level: RiskLevel;
+  score: number;
+  summary: string;
+  factors: RiskFactor[];
+  recommended_action: string;
+};
+
 export type ProofRun = {
   id: string;
   claim: string;
@@ -154,6 +170,7 @@ export type ProofRun = {
   checklist: VerificationChecklist;
   checks: ProofCheck[];
   evaluation?: EvidenceEvaluation | null;
+  risk?: RiskAssessment | null;
   self_report_comparison?: SelfReportComparison | null;
   timeline: TimelineEvent[];
   approval?: ApprovalRecord | null;

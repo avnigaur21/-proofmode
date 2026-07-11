@@ -25,6 +25,7 @@ import type {
   EvidenceEvaluation,
   ProofCheck,
   ProofRun,
+  RiskAssessment,
   SelfReportComparison,
   TimelineEvent,
   VerificationLayer,
@@ -132,6 +133,8 @@ export function RunDetail({
       <SelfReportPanel comparison={currentRun.self_report_comparison} report={currentRun.agent_report} />
 
       <EvidenceEvaluationPanel evaluation={currentRun.evaluation} />
+
+      <RiskAssessmentPanel risk={currentRun.risk} />
 
       <RunComparison currentRun={currentRun} previousRun={previousRun} />
 
@@ -383,6 +386,53 @@ function EvidenceEvaluationPanel({ evaluation }: { evaluation?: EvidenceEvaluati
       ) : null}
       {evaluation.guardrails.length > 0 ? (
         <EvidenceEvaluationList title="Guardrails" items={evaluation.guardrails} />
+      ) : null}
+    </section>
+  );
+}
+
+function RiskAssessmentPanel({ risk }: { risk?: RiskAssessment | null }) {
+  if (!risk) {
+    return (
+      <section className="risk-panel risk-panel--empty">
+        <div className="section-title-row">
+          <AlertTriangle size={18} />
+          <h3>Approval Risk</h3>
+        </div>
+        <p className="muted-text">No approval risk assessment has been recorded for this run.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="risk-panel">
+      <div className="section-title-row">
+        <AlertTriangle size={18} />
+        <h3>Approval Risk</h3>
+        <span className={`mini-status mini-status--${riskTone(risk.level)}`}>{risk.level}</span>
+      </div>
+      <div className="risk-grid">
+        <div className={`risk-score risk-score--${riskTone(risk.level)}`}>
+          <span>Risk score</span>
+          <strong>{risk.score}/100</strong>
+        </div>
+        <div className="risk-summary">
+          <span>{risk.level} risk</span>
+          <p>{risk.summary}</p>
+          <code>{risk.recommended_action}</code>
+        </div>
+      </div>
+      {risk.factors.length > 0 ? (
+        <div className="risk-factor-list">
+          {risk.factors.slice(0, 6).map((factor) => (
+            <div className="risk-factor" key={`${factor.name}-${factor.explanation}`}>
+              <strong>{factor.name.replace(/_/g, " ")}</strong>
+              <code>{factor.points} pts</code>
+              <span className={`mini-status mini-status--${riskTone(factor.severity)}`}>{factor.severity}</span>
+              <p>{factor.explanation}</p>
+            </div>
+          ))}
+        </div>
       ) : null}
     </section>
   );
@@ -971,6 +1021,18 @@ function rubricTone(score: number): "passed" | "failed" | "uncertain" {
   }
 
   if (score < 0.35) {
+    return "failed";
+  }
+
+  return "uncertain";
+}
+
+function riskTone(level: string): "passed" | "failed" | "uncertain" {
+  if (level === "low") {
+    return "passed";
+  }
+
+  if (level === "critical" || level === "high") {
     return "failed";
   }
 

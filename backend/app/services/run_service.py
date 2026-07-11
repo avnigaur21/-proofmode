@@ -13,6 +13,7 @@ from app.schemas.runs import (
 from app.services.evidence_evaluator import EvidenceEvaluator
 from app.services.planner import VerificationPlanner
 from app.services.report_generator import ReportGenerator
+from app.services.risk_assessor import RiskAssessor
 from app.services.run_store import RunStore
 from app.services.self_report_comparator import SelfReportComparator
 from app.services.timeline import TimelineRecorder
@@ -30,6 +31,7 @@ class RunService:
         self._planner = VerificationPlanner()
         self._evaluator = EvidenceEvaluator()
         self._self_report_comparator = SelfReportComparator()
+        self._risk_assessor = RiskAssessor()
         self._report_generator = ReportGenerator()
         self._timeline = TimelineRecorder()
         self._verifiers: list[tuple[VerificationLayer, object]] = [
@@ -159,6 +161,19 @@ class RunService:
                 "evaluator_mode": run.evaluation.evaluator_mode,
                 "guardrails": run.evaluation.guardrails,
                 "rubrics": [rubric.model_dump(mode="json") for rubric in run.evaluation.rubrics],
+            },
+        )
+        run.risk = self._risk_assessor.assess(run)
+        self._timeline.record(
+            run,
+            "risk.assessed",
+            run.risk.summary,
+            layer="evaluator",
+            status=run.risk.level,
+            metadata={
+                "risk_level": run.risk.level,
+                "risk_score": run.risk.score,
+                "factor_count": len(run.risk.factors),
             },
         )
         report_artifact = self._report_generator.artifact_for(run)
@@ -339,6 +354,19 @@ class RunService:
                 "decision": payload.decision,
                 "reviewer": payload.reviewer,
                 "has_note": bool(payload.note),
+            },
+        )
+        run.risk = self._risk_assessor.assess(run)
+        self._timeline.record(
+            run,
+            "risk.reassessed",
+            run.risk.summary,
+            layer="evaluator",
+            status=run.risk.level,
+            metadata={
+                "risk_level": run.risk.level,
+                "risk_score": run.risk.score,
+                "factor_count": len(run.risk.factors),
             },
         )
         self._report_generator.write_markdown(run)

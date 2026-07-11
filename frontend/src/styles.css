@@ -1341,6 +1341,118 @@ h2 { margin: 0; font-weight: 700; color: var(--text-primary); }
   line-height: 1.4;
 }
 
+/* Approval Risk */
+.risk-panel {
+  padding: 20px;
+  margin-bottom: 24px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.risk-panel--empty {
+  background: #f8fafc;
+}
+
+.risk-grid {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.18fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.risk-score,
+.risk-summary {
+  min-width: 0;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.risk-score span,
+.risk-summary span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.risk-score strong {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.risk-score--passed strong { color: var(--color-passed); }
+.risk-score--failed strong { color: var(--color-failed); }
+.risk-score--uncertain strong { color: var(--color-uncertain); }
+
+.risk-summary p {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.risk-summary code {
+  display: inline-block;
+  max-width: 100%;
+  padding: 4px 8px;
+  overflow: hidden;
+  color: var(--primary-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #e0f2fe;
+  border: 1px solid rgba(2, 132, 199, 0.18);
+  border-radius: 999px;
+}
+
+.risk-factor-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.risk-factor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: start;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.risk-factor strong {
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  text-transform: capitalize;
+}
+
+.risk-factor code {
+  padding: 3px 7px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+}
+
+.risk-factor p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 /* Run Comparison */
 .comparison-panel {
   padding: 20px;

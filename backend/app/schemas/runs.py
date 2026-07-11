@@ -40,6 +40,13 @@ class SelfReportVerdict(StrEnum):
     NOT_PROVIDED = "not_provided"
 
 
+class RiskLevel(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
 VerificationLayer = Literal["ui", "api", "db", "diff", "tests"]
 TimelineLayer = Literal["run", "planner", "evaluator", "ui", "api", "db", "diff", "tests", "report"]
 
@@ -224,6 +231,21 @@ class SelfReportComparison(BaseModel):
     supported_statements: list[str] = Field(default_factory=list)
 
 
+class RiskFactor(BaseModel):
+    name: str
+    severity: RiskLevel
+    points: int = Field(ge=0)
+    explanation: str
+
+
+class RiskAssessment(BaseModel):
+    level: RiskLevel
+    score: int = Field(ge=0, le=100)
+    summary: str
+    factors: list[RiskFactor] = Field(default_factory=list)
+    recommended_action: str
+
+
 class TimelineEvent(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     type: str
@@ -251,6 +273,7 @@ class ProofRun(BaseModel):
     checklist: VerificationChecklist = Field(default_factory=VerificationChecklist)
     checks: list[ProofCheck] = Field(default_factory=list)
     evaluation: EvidenceEvaluation | None = None
+    risk: RiskAssessment | None = None
     timeline: list[TimelineEvent] = Field(default_factory=list)
     approval: ApprovalRecord | None = None
     report_path: str | None = None

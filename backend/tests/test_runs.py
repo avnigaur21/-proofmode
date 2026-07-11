@@ -18,6 +18,7 @@ from app.schemas.runs import (
     VerificationChecklist,
 )
 from app.services.evidence_evaluator import EvidenceEvaluator
+from app.services.risk_assessor import RiskAssessor
 from app.services.run_service import RunService
 from app.verifiers.db_verifier import DbVerifier
 from app.verifiers.test_command_verifier import TestCommandVerifier
@@ -35,6 +36,8 @@ def test_create_run_returns_structured_report(tmp_path) -> None:
     assert body["claim"] == "Add login page"
     assert body["status"] == "passed"
     assert body["evaluation"]["verdict"] == "supported"
+    assert body["risk"]["level"] == "low"
+    assert body["risk"]["score"] >= 0
     assert body["evaluation"]["confidence"] > 0
     assert len(body["evaluation"]["rubrics"]) >= 6
     assert {check["layer"] for check in body["checklist"]["checks"]} == {"diff"}
@@ -236,9 +239,30 @@ def test_evidence_evaluator_contradicts_deterministic_failures(tmp_path) -> None
     body = response.json()
     assert body["status"] == "failed"
     assert body["evaluation"]["verdict"] == "contradicted"
+    assert body["risk"]["level"] == "critical"
+    assert body["risk"]["score"] >= 70
     assert len(body["evaluation"]["rubrics"]) >= 6
     assert "cannot be overridden" in " ".join(body["evaluation"]["guardrails"])
     assert "evaluator.completed" in [event["type"] for event in body["timeline"]]
+
+
+def test_risk_assessor_marks_failed_checks_critical() -> None:
+    run = ProofRun(
+        claim="Agent says checkout is complete",
+        checks=[
+            ProofCheck(
+                layer="api",
+                status=CheckStatus.FAILED,
+                summary="Login endpoint returned 500.",
+            )
+        ],
+    )
+
+    risk = RiskAssessor().assess(run)
+
+    assert risk.level == "critical"
+    assert risk.score >= 35
+    assert any(factor.name == "api_failed" for factor in risk.factors)
 
 
 def test_llm_evidence_evaluator_can_downgrade_clean_evidence() -> None:
@@ -432,9 +456,11 @@ def test_approval_gate_persists_human_decision(tmp_path) -> None:
     assert approval_response.status_code == 200
     body = approval_response.json()
     assert body["approval"]["decision"] == "fix_requested"
+    assert body["risk"]["level"] in {"low", "medium", "high", "critical"}
     assert body["approval"]["reviewer"] == "Avni"
     assert body["approval"]["note"] == "Wire the button before calling it done."
-    assert body["timeline"][-1]["type"] == "approval.fix_requested"
+    assert "approval.fix_requested" in [event["type"] for event in body["timeline"]]
+    assert body["timeline"][-1]["type"] == "risk.reassessed"
 
     reloaded_service = RunService()
     reloaded_run = reloaded_service.get_run(run_id)

@@ -73,6 +73,7 @@ def _verify(args: argparse.Namespace) -> int:
                     "self_report_comparison": run.self_report_comparison.model_dump(mode="json")
                     if run.self_report_comparison
                     else None,
+                    "risk": run.risk.model_dump(mode="json") if run.risk else None,
                     "checks": [check.model_dump(mode="json") for check in run.checks],
                     "report_path": run.report_path,
                     "report_url": run.report_url,
@@ -305,6 +306,18 @@ def _to_pr_markdown(claim_id: str, run: ProofRun) -> str:
         )
         for mismatch in run.self_report_comparison.mismatches:
             lines.append(f"- `{mismatch.topic}` `{mismatch.severity}` - {mismatch.explanation}")
+
+    if run.risk:
+        lines.extend(
+            [
+                "",
+                "### Approval Risk",
+                f"- Level: `{run.risk.level}`",
+                f"- Score: `{run.risk.score}/100`",
+                f"- Summary: {run.risk.summary}",
+                f"- Recommended action: {run.risk.recommended_action}",
+            ]
+        )
 
     if run.checks:
         lines.extend(["", "### Proof Checks"])

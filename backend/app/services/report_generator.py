@@ -93,6 +93,24 @@ class ReportGenerator:
                 lines.append("- Guardrails:")
                 lines.extend(f"  - {guardrail}" for guardrail in run.evaluation.guardrails)
 
+        if run.risk:
+            lines.extend(
+                [
+                    "",
+                    "## Approval Risk",
+                    f"- Level: `{run.risk.level}`",
+                    f"- Score: `{run.risk.score}/100`",
+                    f"- Summary: {run.risk.summary}",
+                    f"- Recommended action: {run.risk.recommended_action}",
+                ]
+            )
+            if run.risk.factors:
+                lines.append("- Factors:")
+                lines.extend(
+                    f"  - `{factor.severity}` `{factor.name}` ({factor.points} pts): {factor.explanation}"
+                    for factor in run.risk.factors
+                )
+
         lines.extend(["", "## Planned Checklist"])
 
         for planned_check in run.checklist.checks:

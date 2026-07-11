@@ -235,7 +235,7 @@ class EvidenceEvaluator:
                 reasons=[f"{check.layer.upper()}: {check.summary}" for check in failed_checks],
                 guardrails=[
                     "Deterministic verifier failures cannot be overridden by evaluator judgment.",
-                    "A failed UI/API/DB/Git proof keeps the claim from being marked supported.",
+                    "A failed UI/API/DB/Git/tests proof keeps the claim from being marked supported.",
                 ],
                 rubrics=self._rubrics_for(run),
                 evaluator_mode=self._guarded_mode(),
@@ -346,6 +346,11 @@ class EvidenceEvaluator:
                 "Whether changed-code evidence was inspected.",
             ),
             self._rubric(
+                "test_evidence_strength",
+                self._layer_score(run, "tests"),
+                "Strength of captured test command evidence.",
+            ),
+            self._rubric(
                 "evidence_completeness",
                 self._evidence_completeness_score(run),
                 "Overall completeness across enabled proof layers.",
@@ -387,7 +392,7 @@ class EvidenceEvaluator:
     def _evidence_completeness_score(self, run: ProofRun) -> float:
         enabled_layers = [
             layer
-            for layer in ("ui", "api", "db", "diff")
+            for layer in ("ui", "api", "db", "diff", "tests")
             if run.run_config.is_layer_enabled(layer)  # type: ignore[arg-type]
         ]
         if not enabled_layers:
